@@ -16,3 +16,14 @@ local-checks-to-skip = sc_immutable_NEWS
 # The test snapshot holds copies of system files exactly as the kernel
 # writes them, padding and all.
 VC_LIST_ALWAYS_EXCLUDE_REGEX = ^tests/root/
+
+# In a tree that is not configured there is nothing to clean, so let
+# the cleaning targets succeed there; packaging tools run them first.
+ifeq ($(wildcard Makefile),)
+  _clean_goals = clean distclean maintainer-clean
+  ifneq ($(filter $(_clean_goals),$(MAKECMDGOALS)),)
+    .DEFAULT_GOAL := $(firstword $(MAKECMDGOALS))
+    $(_clean_goals):
+	@:
+  endif
+endif
