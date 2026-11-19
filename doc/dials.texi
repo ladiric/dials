@@ -343,13 +343,17 @@ ten processes with the most memory.
 @cindex graphics processors
 @cindex NVIDIA
 
-The GPU page shows graphics processors from NVIDIA, AMD and Intel.
-NVIDIA's are read through NVML, the monitoring library that comes with
-the NVIDIA driver; Dials loads the library when it starts, if it is
-installed.  The others are read from the kernel's drivers:
-@code{amdgpu} gives about as much as NVML does, while @code{i915} and
-@code{xe} give the frequency and, from the time the GPU spent idle,
-how busy it was.  Names come from the PCI ID database, when it is
+The GPU page shows graphics processors from AMD, Intel and NVIDIA,
+read from the kernel's drivers: @code{amdgpu} gives the most, while
+@code{i915} and @code{xe} give the frequency and, from the time the
+GPU spent idle, how busy it was, and @code{nouveau} gives what it
+can.
+
+@cindex NVML
+NVIDIA's own driver is not free software, and neither is NVML, the
+monitoring library that comes with it.  GPUs that use that driver are
+shown only if Dials was configured with @option{--enable-nvml}; it
+then loads NVML when it starts, if it is installed.  Names come from the PCI ID database, when it is
 installed.  The page says why when there is nothing to show.
 
 The list at the top has one line per GPU, with its temperature,
@@ -363,7 +367,8 @@ speed and the use of the video encoder and decoder.  Then come blocks
 with the current temperature, utilization, video memory and power,
 each with the lowest, mean and highest value seen, graphs of their
 history, and the processes using the GPU with their share of its time
-and of its memory.  Only NVML lists the processes.
+and of its memory.  Processes are listed only for GPUs read through
+NVML.
 
 On a small screen the blocks are left out first, then the processes.
 
@@ -604,9 +609,9 @@ monitoring drivers in @file{/sys/class/hwmon}.
 the processes using the most.
 
 @item Graphics processors
-NVML, from @file{libnvidia-ml.so.1}, for NVIDIA's driver; for others,
 @file{/sys/class/drm/card*/device} and its hardware monitoring
-directory, and the PCI ID database in @file{/usr/share/hwdata/pci.ids}
+directory, or NVML from @file{libnvidia-ml.so.1} when Dials was
+configured with @option{--enable-nvml}, and the PCI ID database in @file{/usr/share/hwdata/pci.ids}
 or @file{/usr/share/misc/pci.ids}.
 
 @item Disks

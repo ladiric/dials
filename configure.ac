@@ -46,9 +46,24 @@ CPPFLAGS=$dials_save_CPPFLAGS
 AC_CHECK_HEADERS([sys/timerfd.h], [],
   [AC_MSG_ERROR([sys/timerfd.h is missing; Dials currently supports GNU/Linux only])])
 
-# NVIDIA's monitoring library is loaded at run time when present.
-AC_SEARCH_LIBS([dlopen], [dl], [],
-  [AC_MSG_ERROR([dlopen is required])])
+# NVIDIA's monitoring library, NVML, is not free software, so reading
+# GPUs through it must be asked for.  It is loaded at run time when
+# present, and is never needed to build.
+AC_ARG_ENABLE([nvml],
+  [AS_HELP_STRING([--enable-nvml],
+     [read NVIDIA GPUs through NVIDIA's proprietary NVML library, when
+      it is installed (default: no)])],
+  [case $enableval in
+     yes|no) ;;
+     *) AC_MSG_ERROR([bad value $enableval for nvml option]) ;;
+   esac],
+  [enable_nvml=no])
+AS_IF([test "$enable_nvml" = yes],
+  [AC_SEARCH_LIBS([dlopen], [dl], [],
+     [AC_MSG_ERROR([--enable-nvml needs dlopen])])
+   AC_DEFINE([ENABLE_NVML], [1],
+     [Define to 1 to read NVIDIA GPUs through NVML.])])
+AM_CONDITIONAL([ENABLE_NVML], [test "$enable_nvml" = yes])
 
 # Used to generate the manual page from --help.
 AM_MISSING_PROG([HELP2MAN], [help2man])

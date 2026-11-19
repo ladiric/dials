@@ -51,8 +51,10 @@ gpus_open (struct gpus *g, bool demo, size_t history)
     wanted[nwanted++] = &gpu_demo_backend;
   else
     {
+#if ENABLE_NVML
       if (!sysroot_set ())
         wanted[nwanted++] = &gpu_nvml_backend;
+#endif
       wanted[nwanted++] = &gpu_drm_backend;
     }
 
@@ -62,7 +64,7 @@ gpus_open (struct gpus *g, bool demo, size_t history)
       void *priv;
       if (!wanted[b]->open (&priv, err, sizeof err))
         {
-          /* Keep the first reason, which is NVML's.  */
+          /* Keep the first reason.  */
           if (!g->error[0])
             snprintf (g->error, sizeof g->error, "%s", err);
           continue;
@@ -70,6 +72,8 @@ gpus_open (struct gpus *g, bool demo, size_t history)
       int n = wanted[b]->count (priv);
       if (n <= 0)
         {
+          if (!g->error[0])
+            snprintf (g->error, sizeof g->error, "%s", err);
           wanted[b]->close (priv);
           continue;
         }

@@ -73,7 +73,9 @@ struct gpu_backend
   void (*close) (void *priv);
 };
 
+#if ENABLE_NVML
 extern const struct gpu_backend gpu_nvml_backend;
+#endif
 extern const struct gpu_backend gpu_drm_backend;
 extern const struct gpu_backend gpu_demo_backend;
 

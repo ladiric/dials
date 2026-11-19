@@ -12,7 +12,7 @@ dials_SOURCES = \
   cpu.c cpu.h \
   disk.c disk.h \
   log.c log.h \
-  gpu.c gpu.h gpu_demo.c gpu_drm.c gpu_nvml.c \
+  gpu.c gpu.h gpu_demo.c gpu_drm.c \
   main.c \
   memory.c memory.h \
   metric.c metric.h \
@@ -31,6 +31,10 @@ dials_SOURCES = \
   ui.c ui.h \
   util.c util.h \
   widgets.c widgets.h
+
+if ENABLE_NVML
+dials_SOURCES += gpu_nvml.c
+endif
 
 AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib \
   -DLOCALEDIR='"$(localedir)"'

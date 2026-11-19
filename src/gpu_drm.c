@@ -71,6 +71,8 @@ struct drm_card
 struct drm
 {
   int n;
+  int nonfree;			/* Cards left out because they use NVIDIA's
+                                   own driver.  */
   struct drm_card c[DRM_MAX];
 };
 
@@ -219,7 +221,10 @@ add_card (struct drm *d, const char *card)
     if (streq (drv, known[i].driver))
       k = (int) i;
   if (k < 0)
-    return;
+    {
+      d->nonfree += streq (drv, "nvidia");
+      return;
+    }
 
   struct drm_card *c = &d->c[d->n++];
   memset (c, 0, sizeof *c);
@@ -283,8 +288,6 @@ static bool
 drm_open (void **priv, char *err, size_t esize)
 {
   char path[4096];
-  (void) err;
-  (void) esize;
   sys_path (path, sizeof path, "/sys/class/drm");
   DIR *dir = opendir (path);
   if (!dir)
@@ -295,6 +298,15 @@ drm_open (void **priv, char *err, size_t esize)
     add_card (d, e->d_name);
   closedir (dir);
   qsort (d->c, d->n, sizeof d->c[0], by_card);
+#if !ENABLE_NVML
+  if (d->nonfree)
+    snprintf (err, esize, "%s",
+              _("GPUs on NVIDIA's own driver are shown only when Dials"
+                " is configured with --enable-nvml."));
+#else
+  (void) err;
+  (void) esize;
+#endif
   *priv = d;
   return true;
 }
