@@ -55,6 +55,7 @@ This manual is for Dials (version @value{VERSION}, @value{UPDATED}).
 * Keys::                Keyboard commands.
 * Settings::            Keeping a setup between runs.
 * Logging::             Writing measurements to a file.
+* Sources::             Where the measurements come from.
 * Reporting bugs::      Sending bug reports.
 * GNU Free Documentation License::  Copying this manual.
 * Index::
@@ -73,6 +74,13 @@ hardware sensors and power.
 Dials reads its measurements from @file{/proc} and @file{/sys}.  It
 keeps the files it reads open and rereads them in place, so it uses
 very little of the processor time it measures.
+
+Dials needs a terminal of at least 80 columns and 24 lines to show a
+page comfortably; on a smaller one, parts of a page are left out.  A
+terminal and locale with UTF-8 give the best lines and bars; with
+others, Dials draws with plain characters.  With @option{--once},
+Dials prints a plain report instead, which suits scripts and remote
+sessions.
 
 This is an early version, and its pages may still change.
 
@@ -96,7 +104,10 @@ trying the interface and for screenshots.
 @itemx --interval=@var{seconds}
 @opindex --interval
 Take a sample every @var{seconds}, which may be a fraction from 0.1 to
-3600.  The default is 1.
+3600.  The default is 1.  Either @samp{.} or the locale's decimal
+point may be used, as in @samp{0.5} or @samp{0,5}.  While Dials runs,
+@kbd{-} and @kbd{+} step through 0.25, 0.5, 1, 2, 3, 5, 10, 30 and 60
+seconds.
 
 @item -p @var{name}
 @itemx --page=@var{name}
@@ -119,7 +130,27 @@ Write each sample to @var{file} from the start.  @xref{Logging}.
 @item --once
 @opindex --once
 Print one plain-text report on standard output and exit, without
-starting the full-screen interface.
+starting the full-screen interface.  Dials first takes two samples one
+interval apart, so that rates such as processor use can be computed.
+The report begins like this:
+
+@example
+Host:                  demo
+System:                Demo System 1.0
+Kernel:                6.0.0-demo x86_64
+Processor:             Demo CPU 16-Core Processor
+CPUs:                  16
+Uptime:                3 days, 04:12
+Load:                  1.32 0.35 0.13
+CPU:                   33% (user 24%, system 6%, I/O wait 1%)
+Memory:                10.1 / 32.0 GiB (31%), 21.9 GiB available
+@end example
+
+@noindent
+and goes on with each GPU, disk, file system, network interface,
+battery and power supply, and a summary of the sensors.  The labels
+are translated and the numbers follow the locale, so programs that
+read measurements should use a log instead (@pxref{Logging}).
 
 @item --sysroot=@var{dir}
 @opindex --sysroot
@@ -136,6 +167,64 @@ Print a summary of the options and exit.
 @opindex --version
 Print the version number and licensing information and exit.
 @end table
+
+@menu
+* Exit status::         What the exit status means.
+* Environment::         Environment variables that Dials uses.
+* Privileges::          What needs root privileges.
+@end menu
+
+@node Exit status
+@section Exit status
+@cindex exit status
+
+Dials exits with status 0 when it ends normally, and with status 1
+when an option is wrong, when the system's measurements cannot be
+read, when the terminal cannot be used, or when its output cannot be
+written.
+
+@node Environment
+@section Environment
+@cindex environment variables
+
+@table @env
+@item TERM
+The terminal type, which tells Dials how to draw and how many colors
+it may use.  With fewer than eight colors, the @samp{mono} theme is
+used.
+
+@item LANG
+@itemx LC_ALL
+@itemx LC_MESSAGES
+@itemx LC_NUMERIC
+@itemx LC_CTYPE
+The language of messages and labels, the decimal point of the numbers
+shown, and whether the terminal uses UTF-8.  Files that Dials writes
+for programs, such as logs and the settings file, always use
+@samp{.} as the decimal point.
+
+@item XDG_CONFIG_HOME
+@itemx HOME
+Where the settings file is.  @xref{Settings}.
+@end table
+
+@node Privileges
+@section Privileges
+@cindex root privileges
+@cindex privileges
+
+Dials needs no special privileges, and it is best run as an ordinary
+user.  A few things depend on them:
+
+@itemize @bullet
+@item
+Most systems let only root read processor power from RAPL
+(@pxref{Power page}).
+@item
+Signals can be sent, and nice values raised, only for your own
+processes; lowering a nice value needs root privileges
+(@pxref{Processes page}).
+@end itemize
 
 @node The screen
 @chapter The screen
@@ -154,6 +243,16 @@ and @kbd{C-u} swaps them.  The page keys choose the active panel's
 page.  On a screen narrower than 80 columns only the active panel is
 shown.
 
+@cindex menus
+The menu bar has three menus.  @samp{Page} chooses the active panel's
+page.  @samp{Options} pauses sampling, makes it less or more frequent,
+clears the history, changes the color theme, shows one panel or two,
+starts or stops logging, saves the setup (@pxref{Settings}), makes the
+other panel active, swaps the panels and quits.  @samp{Help} lists the
+keys and tells which version of Dials is running.
+
+@cindex graphs
+@cindex colors
 Graphs scroll from right to left,
 with the newest sample on the right; the label on the bottom of a
 graph tells how much time it spans.  Bars and graphs are green below
@@ -479,6 +578,62 @@ bytes received and sent per second on each hardware network
 interface.  Numbers always use @samp{.} as the decimal point.  Values
 that cannot be read are left empty, or are @code{null} in JSON.  The
 columns are fixed when logging starts.
+
+@node Sources
+@chapter Where the measurements come from
+@cindex sources of measurements
+@cindex @file{/proc}
+@cindex @file{/sys}
+
+Dials reads what the Linux kernel publishes; it does not need a
+daemon or a kernel module of its own.  These are the main sources:
+
+@table @asis
+@item The system
+@file{/proc/sys/kernel/hostname}, @file{/proc/sys/kernel/osrelease},
+@file{/etc/os-release}, @file{/proc/cpuinfo} and @file{/proc/uptime}.
+
+@item Processors
+@file{/proc/stat}, @file{/proc/loadavg}, @file{/proc/pressure/cpu},
+@file{/sys/devices/system/cpu/cpu*/cpufreq} and the hardware
+monitoring drivers in @file{/sys/class/hwmon}.
+
+@item Memory
+@file{/proc/meminfo}, @file{/proc/vmstat}, @file{/proc/pressure/memory},
+@file{/sys/block/zram*/mm_stat}, and @file{/proc/@var{pid}/statm} for
+the processes using the most.
+
+@item Graphics processors
+NVML, from @file{libnvidia-ml.so.1}, for NVIDIA's driver; for others,
+@file{/sys/class/drm/card*/device} and its hardware monitoring
+directory, and the PCI ID database in @file{/usr/share/hwdata/pci.ids}
+or @file{/usr/share/misc/pci.ids}.
+
+@item Disks
+@file{/sys/block}, @file{/proc/diskstats} and @file{/proc/self/mounts},
+and @code{statvfs} for the space of each file system.
+
+@item Network
+@file{/proc/net/dev}, @file{/sys/class/net}, @file{/proc/net/tcp},
+@file{/proc/net/tcp6}, @file{/proc/net/udp} and @file{/proc/net/udp6},
+and @code{getifaddrs} for the addresses.
+
+@item Processes
+@file{/proc/@var{pid}/stat}, @file{/proc/@var{pid}/comm} and
+@file{/proc/@var{pid}/cmdline}; the owner of @file{/proc/@var{pid}}
+is the process's user.
+
+@item Sensors
+@file{/sys/class/hwmon}.
+
+@item Power
+@file{/sys/class/power_supply} and @file{/sys/class/powercap}.
+@end table
+
+Most of these files are kept open and read again in place at each
+sample, which is much cheaper than opening them again.  The
+@option{--sysroot} option reads the same files under another directory
+(@pxref{Invoking dials}).
 
 @node Reporting bugs
 @chapter Reporting bugs

@@ -376,7 +376,7 @@ draw_help (struct app *a)
     { "F9", N_("Open the menu bar") },
     { "F10  q", N_("Quit") },
     { "1-9  Alt-1..9", N_("Go to a page") },
-    { "Up  Down", N_("Choose a disk, interface, sensor or GPU") },
+    { "Up  Down", N_("Choose a disk, interface, process, sensor or GPU") },
     { "F5  F6", N_("Processes: sort; show as a tree") },
     { "F7  F8", N_("Processes: change nice value; send a signal") },
     { "/", N_("Processes: filter by name or command") },
