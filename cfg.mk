@@ -17,6 +17,9 @@ local-checks-to-skip = sc_immutable_NEWS
 # writes them, padding and all.
 VC_LIST_ALWAYS_EXCLUDE_REGEX = ^tests/root/
 
+# Commands in the GitHub workflows are not --help text.
+exclude_file_name_regexp--sc_two_space_separator_in_usage = ^\.github/
+
 # In a tree that is not configured there is nothing to clean, so let
 # the cleaning targets succeed there; packaging tools run them first.
 ifeq ($(wildcard Makefile),)

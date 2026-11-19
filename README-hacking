@@ -52,6 +52,29 @@ installs and passes its tests.  The tarball's ChangeLog is made from
 the Git history.  Checking the printed manual also needs
 texi2dvi from GNU Texinfo and a TeX installation.
 
+Every push and pull request to the develop and master branches is
+built and tested on GitHub, as .github/workflows/ci.yml describes.
+
+To make a release:
+
+  1. Set the new version in AC_INIT in configure.ac.
+  2. Head the top section of NEWS with that version, the date and the
+     kind of release, for example:
+
+       * Noteworthy changes in release 0.1.0 (2026-11-20) [beta]
+
+     Alpha and beta releases are published as prereleases.
+  3. Merge develop into master.
+
+The release workflow, .github/workflows/release.yml, then checks the
+release tarball with 'make distcheck', tags the merge as v0.1.0 and
+publishes the tarballs with their SHA-256 checksums and the NEWS
+section as release notes.  A merge into master that leaves the
+version as it was makes no release.  After a release, start a new
+section at the top of NEWS headed
+
+  * Noteworthy changes in release ?.? (????-??-??) [?]
+
 Please follow the GNU Coding Standards
 <https://www.gnu.org/prep/standards/> in new code.
 

@@ -245,7 +245,7 @@ page_power_draw (struct app *a, struct canvas *cv, struct rect r)
   /* A graph of the package power, else of a power sensor, else of the
      system battery.  */
   const struct metric *m = NULL;
-  char t[96], v[32];
+  char t[160], v[32];		/* Room for a sensor's chip, label and value.  */
   double scale = 100;
   if (p->nrapl > 0)
     {

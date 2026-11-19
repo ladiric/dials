@@ -15,7 +15,6 @@
 Makefile.in
 /po/*
 !/po/LINGUAS
-!/po/Makevars
 !/po/POTFILES.in
 !/po/*.po
 
@@ -47,7 +46,6 @@ Makefile
 /doc/*.cps
 /doc/*.op
 /doc/*.ops
-/configure~
 *~
 /tests/settings.d/
 /dials-*.csv

@@ -7,6 +7,9 @@
 SUBDIRS = lib po src doc
 ACLOCAL_AMFLAGS = -I m4
 
+# Check the HTML manual in 'make distcheck', which needs no TeX.
+AM_DISTCHECK_DVI_TARGET = html
+
 TESTS = \
   tests/version.sh \
   tests/help.sh \

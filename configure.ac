@@ -29,6 +29,9 @@ AC_PROG_CC
 gl_EARLY
 
 # Native Language Support.
+# Gnulib's bootstrap runs autopoint only when it sees
+# AM_GNU_GETTEXT_VERSION; with both, autopoint follows the second.
+AM_GNU_GETTEXT_VERSION([0.21])
 AM_GNU_GETTEXT_REQUIRE_VERSION([0.21])
 AM_GNU_GETTEXT([external])
 

@@ -1,0 +1,34 @@
+# Steps shared by the workflows: fetch Gnulib, install the build tools
+# and bootstrap the tree.
+# Copyright (C) 2026 Richard L.
+#
+# This file is part of Dials, distributed under the GNU General
+# Public License, version 3 or later.  See COPYING.
+
+name: Prepare
+description: Fetch Gnulib, install the build tools and run bootstrap.
+
+runs:
+  using: composite
+  steps:
+    - name: Fetch Gnulib
+      shell: bash
+      run: |
+        # Gnulib's GitHub mirror has the same commits as Savannah and
+        # serves single commits, so only the one in use is fetched.
+        git config --global \
+          url.https://github.com/coreutils/gnulib.git.insteadOf \
+          https://git.savannah.gnu.org/git/gnulib.git
+        git submodule update --init --depth 1
+
+    - name: Install build tools
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq --no-install-recommends \
+          autoconf automake autopoint gettext help2man \
+          libncurses-dev pkg-config texinfo
+
+    - name: Bootstrap
+      shell: bash
+      run: ./bootstrap --skip-po
