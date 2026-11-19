@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <dirent.h>
@@ -98,9 +100,9 @@ read_battery (struct battery *b)
   b->time_left = NAN;
   if (b->power > 0.1)
     {
-      if (strcmp (b->status, "Discharging") == 0)
+      if (streq (b->status, "Discharging"))
         b->time_left = b->energy / b->power * 3600;
-      else if (strcmp (b->status, "Charging") == 0)
+      else if (streq (b->status, "Charging"))
         b->time_left = (b->energy_full - b->energy) / b->power * 3600;
     }
 }
@@ -120,7 +122,7 @@ add_supplies (struct power *p, size_t history)
       if (e->d_name[0] == '.' || !supply_text (e->d_name, "type", type,
                                                sizeof type))
         continue;
-      if (strcmp (type, "Battery") == 0 && p->nbat < BATTERY_MAX)
+      if (streq (type, "Battery") && p->nbat < BATTERY_MAX)
         {
           struct battery *b = &p->bat[p->nbat++];
           memset (b, 0, sizeof *b);
@@ -130,10 +132,10 @@ add_supplies (struct power *p, size_t history)
           if (supply_text (e->d_name, "technology", buf, sizeof buf))
             str_copy (b->technology, sizeof b->technology, buf, strlen (buf));
           b->device = supply_text (e->d_name, "scope", buf, sizeof buf)
-            && strcmp (buf, "Device") == 0;
+            && streq (buf, "Device");
           metric_init (&b->m_capacity, history);
         }
-      else if ((strcmp (type, "Mains") == 0 || strcmp (type, "USB") == 0)
+      else if ((streq (type, "Mains") || streq (type, "USB"))
                && p->nsup < SUPPLY_MAX)
         {
           struct supply *s = &p->sup[p->nsup++];

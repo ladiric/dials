@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <dirent.h>
@@ -55,7 +57,7 @@ cpu_line (const char *s)
 {
   if (strncmp (s, "cpu", 3) != 0 || s[3] < '0' || s[3] > '9')
     return -1;
-  return atoi (s + 3);
+  return (int) strtol (s + 3, NULL, 10);
 }
 
 /* Open the temp1_input of the first hwmon device whose driver is one of
@@ -81,7 +83,7 @@ open_temp (void)
         continue;
       name[strcspn (name, "\n")] = '\0';
       for (int i = 0; i < best; i++)
-        if (strcmp (name, temp_drivers[i]) == 0)
+        if (streq (name, temp_drivers[i]))
           {
             snprintf (rel, sizeof rel, "/sys/class/hwmon/%s/temp1_input",
                       e->d_name);

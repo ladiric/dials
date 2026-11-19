@@ -4,7 +4,7 @@
 # This file is part of Dials, distributed under the GNU General
 # Public License, version 3 or later.  See COPYING.
 
-SUBDIRS = po src doc
+SUBDIRS = lib po src doc
 ACLOCAL_AMFLAGS = -I m4
 
 TESTS = \
@@ -22,4 +22,29 @@ AM_TESTS_ENVIRONMENT = \
   export XDG_CONFIG_HOME; \
   LC_ALL=C; export LC_ALL;
 
-EXTRA_DIST = bootstrap README-hacking $(TESTS) tests/root
+EXTRA_DIST = \
+  $(TESTS) \
+  autogen.sh \
+  autopull.sh \
+  bootstrap \
+  bootstrap-funclib.sh \
+  bootstrap.conf \
+  cfg.mk \
+  m4/gnulib-cache.m4 \
+  README-hacking \
+  tests/root
+
+# The change log is the history of the source repository.
+dist-hook: gen-ChangeLog
+
+gen_start_date = 2026-01-01
+.PHONY: gen-ChangeLog
+gen-ChangeLog:
+	$(AM_V_GEN)if test -e $(srcdir)/.git; then			\
+	  LC_ALL=en_US.UTF-8 TZ=UTC0					\
+	  $(top_srcdir)/build-aux/gitlog-to-changelog			\
+	    --srcdir=$(srcdir) --since=$(gen_start_date)		\
+	    > $(distdir)/ChangeLog.tmp &&				\
+	  rm -f $(distdir)/ChangeLog &&					\
+	  mv $(distdir)/ChangeLog.tmp $(distdir)/ChangeLog;		\
+	fi

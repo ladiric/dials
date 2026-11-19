@@ -38,10 +38,10 @@ void metric_clear (struct metric *m);
 void metric_push (struct metric *m, double v);
 
 /* Return sample I, counting from the oldest one held.  */
-double metric_at (const struct metric *m, size_t i);
+double metric_at (const struct metric *m, size_t i) ATTRIBUTE_PURE;
 
 /* Return the newest sample, or NaN if there is none.  */
-double metric_last (const struct metric *m);
+double metric_last (const struct metric *m) ATTRIBUTE_PURE;
 
 /* Store the lowest, mean and highest of the samples held.  Return
    false if there are none.  */

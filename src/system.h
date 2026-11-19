@@ -19,13 +19,13 @@
 #ifndef DIALS_SYSTEM_H
 #define DIALS_SYSTEM_H
 
-#include <config.h>
-
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "attribute.h"
 
 #include "gettext.h"
 #define _(msgid) gettext (msgid)

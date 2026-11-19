@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <stdio.h>
@@ -84,8 +86,8 @@ draw_list (struct app *a, struct canvas *cv, int y, int x, int w, int rows)
                                tx, rxt, txt };
       int styles[N] = { -1, -1, -1, -1, -1, -1, -1, -1 };
       if (!sel)
-        styles[2] = strcmp (d->state, "up") == 0 ? ST_OK
-          : strcmp (d->state, "down") == 0 ? ST_DIM : -1;
+        styles[2] = streq (d->state, "up") ? ST_OK
+          : streq (d->state, "down") ? ST_DIM : -1;
       table_row (cv, y + 1 + row, x, w, cols, N, widths, cells, styles,
                  sel ? ST_SEL : ST_BASE);
     }

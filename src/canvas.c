@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <limits.h>
@@ -34,7 +36,7 @@ canvas_init (struct canvas *cv)
 {
   cv->h = cv->w = 0;
   cv->cells = NULL;
-  cv->utf8 = strcmp (nl_langinfo (CODESET), "UTF-8") == 0;
+  cv->utf8 = streq (nl_langinfo (CODESET), "UTF-8");
 }
 
 void

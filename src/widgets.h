@@ -23,7 +23,7 @@
 #include "metric.h"
 
 /* Return ST_OK, ST_WARN or ST_CRIT for a load fraction.  */
-int level_style (double frac);
+int level_style (double frac) ATTRIBUTE_CONST;
 
 /* Format V in at most four characters, such as "980" or "31k".  */
 void fmt_compact (char *buf, size_t size, double v);

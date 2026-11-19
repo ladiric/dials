@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include "theme.h"
@@ -122,7 +124,7 @@ int
 theme_find (const char *name)
 {
   for (int i = 0; i < theme_count (); i++)
-    if (strcmp (themes[i].name, name) == 0)
+    if (streq (themes[i].name, name))
       return i;
   return -1;
 }

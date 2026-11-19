@@ -1,14 +1,14 @@
 # Source files that contain translatable strings.
+lib/closeout.c
+lib/error.c
+lib/getopt.c
+lib/quotearg.c
+lib/xalloc-die.c
 src/app.c
-src/cpu.c
-src/disk.c
 src/gpu.c
 src/gpu_drm.c
 src/gpu_nvml.c
-src/log.c
 src/main.c
-src/memory.c
-src/net.c
 src/page_cpu.c
 src/page_disk.c
 src/page_gpu.c
@@ -19,8 +19,6 @@ src/page_power.c
 src/page_proc.c
 src/page_sensors.c
 src/pages.c
-src/power.c
-src/procs.c
 src/sensors.c
 src/settings.c
 src/source_demo.c

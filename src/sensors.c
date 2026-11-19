@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <dirent.h>
@@ -83,7 +85,7 @@ fmt_sensor (char *buf, size_t size, enum sensor_kind k, double v)
 static int
 hwmon_number (const char *name)
 {
-  return atoi (name + 5);
+  return (int) strtol (name + 5, NULL, 10);
 }
 
 static int
@@ -107,7 +109,7 @@ by_kind_and_number (const void *a, const void *b)
   return x->number - y->number;
 }
 
-/* If NAME is an input file such as "temp3_input", describe it in IN.  */
+/* If NAME is an input file such as "temp3_input", describe it in *IN.  */
 static bool
 parse_input (const char *name, struct input *in)
 {
@@ -119,9 +121,9 @@ parse_input (const char *name, struct input *in)
         continue;
       char *end;
       long num = strtol (name + len, &end, 10);
-      if (strcmp (end, "_input") == 0)
+      if (streq (end, "_input"))
         in->average = false;
-      else if (kinds[k].kind == SENSOR_POWER && strcmp (end, "_average") == 0)
+      else if (kinds[k].kind == SENSOR_POWER && streq (end, "_average"))
         in->average = true;
       else
         return false;
@@ -293,7 +295,7 @@ sensors_open (struct sensors *s, bool demo, size_t history)
               if (sys_read (rel, other, sizeof other))
                 {
                   other[strcspn (other, "\n")] = '\0';
-                  same += strcmp (other, name) == 0;
+                  same += streq (other, name);
                 }
             }
           if (same)

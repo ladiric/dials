@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <dirent.h>
@@ -214,7 +216,7 @@ add_card (struct drm *d, const char *card)
 
   int k = -1;
   for (size_t i = 0; i < ARRAY_CARDINALITY (known); i++)
-    if (strcmp (drv, known[i].driver) == 0)
+    if (streq (drv, known[i].driver))
       k = (int) i;
   if (k < 0)
     return;
@@ -273,7 +275,8 @@ static int
 by_card (const void *a, const void *b)
 {
   const struct drm_card *x = a, *y = b;
-  return atoi (x->card + 4) - atoi (y->card + 4);
+  long i = strtol (x->card + 4, NULL, 10), j = strtol (y->card + 4, NULL, 10);
+  return (i > j) - (i < j);
 }
 
 static bool

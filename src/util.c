@@ -16,10 +16,11 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <errno.h>
-#include <error.h>
 #include <fcntl.h>
 #include <langinfo.h>
 #include <locale.h>
@@ -29,46 +30,6 @@
 #include <unistd.h>
 
 #include "util.h"
-
-static void
-xalloc_die (void)
-{
-  error (EXIT_FAILURE, 0, "%s", _("memory exhausted"));
-  abort ();
-}
-
-void *
-xmalloc (size_t n)
-{
-  void *p = malloc (n ? n : 1);
-  if (!p)
-    xalloc_die ();
-  return p;
-}
-
-void *
-xcalloc (size_t n, size_t s)
-{
-  void *p = calloc (n ? n : 1, s ? s : 1);
-  if (!p)
-    xalloc_die ();
-  return p;
-}
-
-/* Exit unsuccessfully if anything written to standard output was
-   lost, as the GNU Coding Standards ask.  Registered with atexit.  */
-void
-close_stdout (void)
-{
-  bool failed = ferror (stdout) != 0;
-  if (fclose (stdout) != 0)
-    failed = true;
-  if (failed)
-    {
-      error (0, errno, "%s", _("write error"));
-      _exit (EXIT_FAILURE);
-    }
-}
 
 void
 str_copy (char *dst, size_t size, const char *src, size_t len)
@@ -94,12 +55,6 @@ c_locale (void)
   return loc;
 }
 
-double
-c_strtod (const char *s, char **end)
-{
-  return strtod_l (s, end, c_locale ());
-}
-
 int
 c_fprintf (FILE *f, const char *format, ...)
 {
@@ -110,6 +65,18 @@ c_fprintf (FILE *f, const char *format, ...)
   va_end (ap);
   uselocale (old);
   return n;
+}
+
+bool
+next_field (char **s, char *buf, size_t size)
+{
+  char *p = *s + strspn (*s, " \t");
+  size_t len = strcspn (p, " \t\n");
+  if (len == 0)
+    return false;
+  str_copy (buf, size, p, len);
+  *s = p + len;
+  return true;
 }
 
 int
@@ -370,7 +337,7 @@ fmt_used_total (char *buf, size_t size, double used, double total)
 bool
 utf8_locale (void)
 {
-  return strcmp (nl_langinfo (CODESET), "UTF-8") == 0;
+  return streq (nl_langinfo (CODESET), "UTF-8");
 }
 
 void

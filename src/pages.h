@@ -45,7 +45,7 @@ extern const struct page pages[];
 extern const size_t page_count;
 
 /* Return the index of the page called ID, or -1.  */
-int page_find (const char *id);
+int page_find (const char *id) ATTRIBUTE_PURE;
 
 void page_overview_draw (struct app *a, struct canvas *cv, struct rect r);
 void page_cpu_draw (struct app *a, struct canvas *cv, struct rect r);

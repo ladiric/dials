@@ -11,7 +11,6 @@ dials_SOURCES = \
   canvas.c canvas.h \
   cpu.c cpu.h \
   disk.c disk.h \
-  gettext.h \
   log.c log.h \
   gpu.c gpu.h gpu_demo.c gpu_drm.c gpu_nvml.c \
   main.c \
@@ -33,6 +32,7 @@ dials_SOURCES = \
   util.c util.h \
   widgets.c widgets.h
 
-AM_CPPFLAGS = -DLOCALEDIR='"$(localedir)"'
-AM_CFLAGS = $(NCURSES_CFLAGS) $(WARN_CFLAGS)
-dials_LDADD = $(NCURSES_LIBS) $(LIBINTL)
+AM_CPPFLAGS = -I$(top_builddir)/lib -I$(top_srcdir)/lib \
+  -DLOCALEDIR='"$(localedir)"'
+AM_CFLAGS = $(NCURSES_CFLAGS) $(WARN_CFLAGS) $(WERROR_CFLAGS)
+dials_LDADD = ../lib/libdials.a $(NCURSES_LIBS) $(LIBINTL) $(LIBTHREAD)

@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <dirent.h>
@@ -174,7 +176,7 @@ read_top (struct memory *m)
         continue;
       int last = m->ntop < MEM_TOP ? m->ntop : MEM_TOP - 1;
       memmove (&m->top[at + 1], &m->top[at], (last - at) * sizeof m->top[0]);
-      m->top[at].pid = (unsigned int) atoi (e->d_name);
+      m->top[at].pid = (unsigned int) strtoul (e->d_name, NULL, 10);
       m->top[at].rss = rss;
       m->top[at].name[0] = '\0';
       if (m->ntop < MEM_TOP)

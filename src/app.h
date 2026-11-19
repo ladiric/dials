@@ -134,7 +134,7 @@ void app_set_page (struct app *a, size_t page);
 
 /* Whether a page drawn by DRAW is on the screen.  */
 bool app_shows (const struct app *a,
-                void (*draw) (struct app *, struct canvas *, struct rect));
+                void (*draw) (struct app *, struct canvas *, struct rect)) ATTRIBUTE_PURE;
 
 void app_toggle_split (struct app *a);
 

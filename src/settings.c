@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <errno.h>
@@ -70,7 +72,7 @@ static int
 lookup (const char *const *list, int n, const char *name)
 {
   for (int i = 0; i < n; i++)
-    if (strcmp (list[i], name) == 0)
+    if (streq (list[i], name))
       return i;
   return -1;
 }
@@ -78,7 +80,7 @@ lookup (const char *const *list, int n, const char *name)
 static int
 yes_no (const char *v)
 {
-  return strcmp (v, "yes") == 0 ? 1 : strcmp (v, "no") == 0 ? 0 : -1;
+  return streq (v, "yes") ? 1 : streq (v, "no") ? 0 : -1;
 }
 
 /* Remove blanks at both ends of S.  */
@@ -98,7 +100,7 @@ static bool
 apply (struct settings *s, const char *name, const char *value)
 {
   int k;
-  if (strcmp (name, "interval") == 0)
+  if (streq (name, "interval"))
     {
       char *end;
       double v = c_strtod (value, &end);
@@ -106,37 +108,37 @@ apply (struct settings *s, const char *name, const char *value)
         return false;
       s->interval = v;
     }
-  else if (strcmp (name, "theme") == 0)
+  else if (streq (name, "theme"))
     {
       if ((k = theme_find (value)) < 0)
         return false;
       s->theme = k;
     }
-  else if (strcmp (name, "left-page") == 0 || strcmp (name, "right-page") == 0)
+  else if (streq (name, "left-page") || streq (name, "right-page"))
     {
       if ((k = page_find (value)) < 0)
         return false;
       s->panels[name[0] == 'r'] = (size_t) k;
     }
-  else if (strcmp (name, "active-panel") == 0)
+  else if (streq (name, "active-panel"))
     {
       if ((k = lookup (panel_ids, 2, value)) < 0)
         return false;
       s->active = k;
     }
-  else if (strcmp (name, "two-panels") == 0)
+  else if (streq (name, "two-panels"))
     {
       if ((k = yes_no (value)) < 0)
         return false;
       s->split = k;
     }
-  else if (strcmp (name, "process-sort") == 0)
+  else if (streq (name, "process-sort"))
     {
       if ((k = lookup (sort_ids, ARRAY_CARDINALITY (sort_ids), value)) < 0)
         return false;
       s->sort = k;
     }
-  else if (strcmp (name, "process-tree") == 0)
+  else if (streq (name, "process-tree"))
     {
       if ((k = yes_no (value)) < 0)
         return false;

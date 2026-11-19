@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <stdio.h>
@@ -103,7 +105,7 @@ page_sensors_draw (struct app *a, struct canvas *cv, struct rect r)
       else
         fmt_sensor (lim, sizeof lim, sn->kind, sn->limit);
       /* Name each chip once, on its first row.  */
-      bool first_of_chip = row == 0 || strcmp (sn->chip, s->s[i - 1].chip) != 0;
+      bool first_of_chip = row == 0 || !streq (sn->chip, s->s[i - 1].chip);
       const char *cells[N] = { first_of_chip ? sn->chip : "", sn->label, now,
                                lo, hi, lim };
       int styles[N] = { ST_TITLE, -1, ST_VALUE, -1, -1, ST_DIM };

@@ -26,7 +26,7 @@ AM_INIT_AUTOMAKE([1.16 gnu subdir-objects -Wall -Werror dist-xz])
 AM_SILENT_RULES([yes])
 
 AC_PROG_CC
-AC_USE_SYSTEM_EXTENSIONS
+gl_EARLY
 
 # Native Language Support.
 AM_GNU_GETTEXT_REQUIRE_VERSION([0.21])
@@ -56,12 +56,46 @@ AM_MISSING_PROG([HELP2MAN], [help2man])
 AC_ARG_ENABLE([gcc-warnings],
   [AS_HELP_STRING([--enable-gcc-warnings],
      [turn on many GCC warnings and treat them as errors (for developers)])],
-  [], [enable_gcc_warnings=no])
-WARN_CFLAGS=
-AS_IF([test "x$enable_gcc_warnings" = xyes],
-  [WARN_CFLAGS="-Wall -Wextra -Wshadow -Wformat=2 -Wstrict-prototypes \
--Wmissing-prototypes -Wpointer-arith -Wwrite-strings -Werror"])
-AC_SUBST([WARN_CFLAGS])
+  [case $enableval in
+     yes|no) ;;
+     *) AC_MSG_ERROR([bad value $enableval for gcc-warnings option]) ;;
+   esac
+   dials_gcc_warnings=$enableval],
+  [dials_gcc_warnings=no])
 
-AC_CONFIG_FILES([Makefile src/Makefile doc/Makefile po/Makefile.in])
+AS_IF([test "$dials_gcc_warnings" = yes],
+  [gl_WARN_ADD([-Werror], [WERROR_CFLAGS])
+   # Every warning GCC knows, less those that do not suit this code.
+   ws=
+   gl_MANYWARN_ALL_GCC([ws])
+   nw=
+   nw="$nw -Wsystem-headers"         # System headers are not ours.
+   nw="$nw -Wvla"                    # Variable length arrays are fine.
+   nw="$nw -Wpadded"                 # Struct padding is fine.
+   nw="$nw -Wtraditional"            # Old compilers are not a target.
+   nw="$nw -Wtraditional-conversion"
+   nw="$nw -Wc++-compat"             # Dials is C, not C++.
+   nw="$nw -Wdouble-promotion"       # Floats are widened on purpose.
+   nw="$nw -Wfloat-equal"            # Exact float comparisons are on purpose.
+   nw="$nw -Wswitch-enum"            # Defaults cover the other cases.
+   nw="$nw -Wswitch-default"
+   nw="$nw -Wunused-macros"          # Headers define macros for others.
+   nw="$nw -Wsign-conversion"        # Too many harmless cases.
+   nw="$nw -Wconversion"
+   nw="$nw -Wformat-nonliteral"      # Formats are passed through gettext.
+   nw="$nw -Wstack-protector"
+   nw="$nw -Winline"
+   nw="$nw -fanalyzer"               # Slow, and wrong too often.
+   nw="$nw -Wformat-truncation=2"    # Text is cut to fit the screen.
+   gl_MANYWARN_COMPLEMENT([ws], [$ws], [$nw])
+   AS_VAR_APPEND([ws], [' -Wno-sign-compare'])
+   AS_VAR_APPEND([ws], [' -Wno-unused-parameter'])
+   for w in $ws; do
+     gl_WARN_ADD([$w])
+   done
+   AC_SUBST([WARN_CFLAGS])])
+
+gl_INIT
+
+AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile doc/Makefile po/Makefile.in])
 AC_OUTPUT

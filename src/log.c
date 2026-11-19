@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <errno.h>
@@ -30,7 +32,7 @@ static bool
 ends_with (const char *s, const char *suffix)
 {
   size_t n = strlen (s), k = strlen (suffix);
-  return n >= k && strcmp (s + n - k, suffix) == 0;
+  return n >= k && streq (s + n - k, suffix);
 }
 
 /* Write V with DIGITS decimals, or nothing in CSV and null in JSON if
@@ -66,7 +68,7 @@ static const struct disk_dev *
 find_disk (const struct app *a, const char *name)
 {
   for (int i = 0; i < a->disks.n; i++)
-    if (strcmp (a->disks.dev[i].name, name) == 0)
+    if (streq (a->disks.dev[i].name, name))
       return &a->disks.dev[i];
   return NULL;
 }
@@ -75,7 +77,7 @@ static const struct net_if *
 find_net (const struct app *a, const char *name)
 {
   for (int i = 0; i < a->net.n; i++)
-    if (strcmp (a->net.dev[i].name, name) == 0)
+    if (streq (a->net.dev[i].name, name))
       return &a->net.dev[i];
   return NULL;
 }

@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <stdio.h>
@@ -46,13 +48,13 @@ fmt_hours (char *buf, size_t size, double seconds)
 static const char *
 status_text (const struct battery *b)
 {
-  if (strcmp (b->status, "Charging") == 0)
+  if (streq (b->status, "Charging"))
     return _("charging");
-  if (strcmp (b->status, "Discharging") == 0)
+  if (streq (b->status, "Discharging"))
     return _("discharging");
-  if (strcmp (b->status, "Full") == 0)
+  if (streq (b->status, "Full"))
     return _("full");
-  if (strcmp (b->status, "Not charging") == 0)
+  if (streq (b->status, "Not charging"))
     return _("not charging");
   return b->status[0] ? b->status : _("unknown");
 }
@@ -97,7 +99,7 @@ draw_batteries (const struct power *p, struct canvas *cv, int y, int x, int w,
       fmt_hours (v, sizeof v, b->time_left);
       if (v[0])
         cx = widget_pair (cv, cy, cx, x + w,
-                          strcmp (b->status, "Charging") == 0
+                          streq (b->status, "Charging")
                           ? _("Full in") : _("Left"), v);
       if (!isnan (b->power) && b->power > 0)
         {

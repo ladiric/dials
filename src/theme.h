@@ -33,11 +33,11 @@ enum style
   ST_COUNT
 };
 
-int theme_count (void);
-const char *theme_name (int idx);
+int theme_count (void) ATTRIBUTE_CONST;
+const char *theme_name (int idx) ATTRIBUTE_CONST;
 
 /* Return the index of the theme called NAME, or -1.  */
-int theme_find (const char *name);
+int theme_find (const char *name) ATTRIBUTE_PURE;
 
 /* Make theme IDX current.  Call after start_color.  */
 void theme_apply (int idx);

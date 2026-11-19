@@ -24,22 +24,22 @@
 #include <stdio.h>
 #include <sys/types.h>
 
-void *xmalloc (size_t n);
-void *xcalloc (size_t n, size_t s);
-void close_stdout (void);
+#include "c-strtod.h"
+#include "xalloc.h"
 
 /* Copy at most LEN bytes of SRC into DST of SIZE bytes, always
    terminating DST.  */
 void str_copy (char *dst, size_t size, const char *src, size_t len);
 
-/* Like strtod, but always with '.' as the decimal point, as in the
-   files of /proc, whatever the locale.  */
-double c_strtod (const char *s, char **end);
-
 /* Like fprintf, but always with '.' as the decimal point, for files
    that programs read.  */
 int c_fprintf (FILE *f, const char *format, ...)
   __attribute__ ((__format__ (__printf__, 2, 3)));
+
+/* Copy the next blank-separated field at *S into BUF of SIZE bytes,
+   cutting it short if needed, and move *S past it.  Return false if
+   there is no field left.  */
+bool next_field (char **s, char *buf, size_t size);
 
 /* Open PATH read-only.  Return the descriptor, or -1.  */
 int open_ro (const char *path);
@@ -49,7 +49,7 @@ int open_ro (const char *path);
 void set_sysroot (const char *dir);
 
 /* Whether a sysroot other than the running system is in use.  */
-bool sysroot_set (void);
+bool sysroot_set (void) ATTRIBUTE_PURE;
 
 /* Store in BUF the system path PATH, such as "/proc/stat", under the
    sysroot.  */

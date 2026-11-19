@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <errno.h>
@@ -42,6 +44,7 @@
 #include "pages.h"
 #include "source.h"
 #include "theme.h"
+#include "closeout.h"
 #include "util.h"
 
 enum
@@ -312,7 +315,7 @@ report (struct source *src, bool demo)
       int routable = 0;
       for (int k = 0; k < d->naddr; k++)
         routable += strncmp (d->addr[k], "fe80:", 5) != 0;
-      if (strcmp (d->name, "lo") == 0 || (!d->physical && routable == 0))
+      if (streq (d->name, "lo") || (!d->physical && routable == 0))
         continue;
       char label[64];
       snprintf (label, sizeof label, _("Interface %s"), d->name);

@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <arpa/inet.h>
@@ -43,7 +45,7 @@ static int
 by_kind_and_name (const void *a, const void *b)
 {
   const struct net_if *x = a, *y = b;
-  bool xlo = strcmp (x->name, "lo") == 0, ylo = strcmp (y->name, "lo") == 0;
+  bool xlo = streq (x->name, "lo"), ylo = streq (y->name, "lo");
   if (xlo != ylo)
     return xlo - ylo;
   if (x->physical != y->physical)
@@ -62,7 +64,7 @@ static struct net_if *
 find_or_add (struct net *n, const char *name)
 {
   for (int i = 0; i < n->n; i++)
-    if (strcmp (n->dev[i].name, name) == 0)
+    if (streq (n->dev[i].name, name))
       return &n->dev[i];
   if (n->n >= NET_MAX)
     return NULL;
@@ -75,7 +77,7 @@ find_or_add (struct net *n, const char *name)
   metric_init (&d->m_rx, n->history);
   metric_init (&d->m_tx, n->history);
   if (n->demo)
-    d->physical = strcmp (name, "lo") != 0;
+    d->physical = !streq (name, "lo");
   else
     {
       /* Hardware interfaces have a device behind them.  */
@@ -177,18 +179,22 @@ read_link (struct net_if *d)
 static int
 prefix_length (const struct sockaddr *mask)
 {
+  struct sockaddr_in sin;
+  struct sockaddr_in6 sin6;
   const unsigned char *b;
   size_t len;
   if (!mask)
     return 0;
   if (mask->sa_family == AF_INET)
     {
-      b = (const unsigned char *) &((const struct sockaddr_in *) mask)->sin_addr;
+      memcpy (&sin, mask, sizeof sin);
+      b = (const unsigned char *) &sin.sin_addr;
       len = 4;
     }
   else
     {
-      b = (const unsigned char *) &((const struct sockaddr_in6 *) mask)->sin6_addr;
+      memcpy (&sin6, mask, sizeof sin6);
+      b = (const unsigned char *) &sin6.sin6_addr;
       len = 16;
     }
   int bits = 0;
@@ -216,14 +222,24 @@ read_addresses (struct net *n)
         continue;
       struct net_if *d = NULL;
       for (int i = 0; i < n->n; i++)
-        if (strcmp (n->dev[i].name, ifa->ifa_name) == 0)
+        if (streq (n->dev[i].name, ifa->ifa_name))
           d = &n->dev[i];
       if (!d || d->naddr >= NET_ADDR_MAX)
         continue;
       char text[INET6_ADDRSTRLEN];
-      const void *a = ifa->ifa_addr->sa_family == AF_INET
-        ? (const void *) &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr
-        : (const void *) &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr;
+      struct sockaddr_in sin;
+      struct sockaddr_in6 sin6;
+      const void *a;
+      if (ifa->ifa_addr->sa_family == AF_INET)
+        {
+          memcpy (&sin, ifa->ifa_addr, sizeof sin);
+          a = &sin.sin_addr;
+        }
+      else
+        {
+          memcpy (&sin6, ifa->ifa_addr, sizeof sin6);
+          a = &sin6.sin6_addr;
+        }
       if (!inet_ntop (ifa->ifa_addr->sa_family, a, text, sizeof text))
         continue;
       snprintf (d->addr[d->naddr++], sizeof d->addr[0], "%s/%d", text,
@@ -245,8 +261,11 @@ count_sockets (const char *path, double *by_state)
   if (fgets (line, sizeof line, f))	/* The heading.  */
     while (fgets (line, sizeof line, f))
       {
-        char st[8];
-        if (sscanf (line, "%*s %*s %*s %7s", st) == 1)
+        /* The fourth field is the state.  */
+        char st[64];
+        char *s = line;
+        if (next_field (&s, st, sizeof st) && next_field (&s, st, sizeof st)
+            && next_field (&s, st, sizeof st) && next_field (&s, st, sizeof st))
           {
             unsigned long k = strtoul (st, NULL, 16);
             if (k < 16)
@@ -311,7 +330,7 @@ demo_sample (struct net *n, bool details, double dt)
           snprintf (d->state, sizeof d->state, "%s", ifs[i].state);
           snprintf (d->mac, sizeof d->mac, "%s", ifs[i].mac);
           d->speed = ifs[i].speed;
-          d->mtu = strcmp (ifs[i].name, "lo") == 0 ? 65536 : 1500;
+          d->mtu = streq (ifs[i].name, "lo") ? 65536 : 1500;
           d->naddr = 0;
           if (ifs[i].addr)
             snprintf (d->addr[d->naddr++], sizeof d->addr[0], "%s",

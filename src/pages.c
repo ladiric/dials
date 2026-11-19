@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include "pages.h"
@@ -43,7 +45,7 @@ int
 page_find (const char *id)
 {
   for (size_t i = 0; i < page_count; i++)
-    if (strcmp (pages[i].id, id) == 0)
+    if (streq (pages[i].id, id))
       return (int) i;
   return -1;
 }

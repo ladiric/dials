@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <dirent.h>
@@ -189,7 +191,7 @@ static struct disk_dev *
 find_disk (struct disks *d, const char *name)
 {
   for (int i = 0; i < d->n; i++)
-    if (strcmp (d->dev[i].name, name) == 0)
+    if (streq (d->dev[i].name, name))
       return &d->dev[i];
   return NULL;
 }
@@ -229,16 +231,18 @@ read_stats (struct disks *d, double dt)
       char *next = strchr (line, '\n');
       if (next)
         *next++ = '\0';
-      unsigned int major, minor;
-      char name[64];
-      int used = 0;
-      if (sscanf (line, " %u %u %63s%n", &major, &minor, name, &used) == 3)
+      /* Major and minor device numbers, then the name.  */
+      char major[16], minor[16], name[64];
+      char *s = line;
+      if (next_field (&s, major, sizeof major)
+          && next_field (&s, minor, sizeof minor)
+          && next_field (&s, name, sizeof name))
         {
           struct disk_dev *dev = find_disk (d, name);
           if (dev)
             {
               unsigned long long v[DISK_COUNTERS] = { 0 };
-              char *s = line + used, *end;
+              char *end;
               for (int k = 0; k < DISK_COUNTERS; k++, s = end)
                 {
                   v[k] = strtoull (s, &end, 10);
@@ -276,7 +280,7 @@ static bool
 local_type (const char *type)
 {
   for (size_t i = 0; i < ARRAY_CARDINALITY (local_types); i++)
-    if (strcmp (type, local_types[i]) == 0)
+    if (streq (type, local_types[i]))
       return true;
   return false;
 }
@@ -293,14 +297,17 @@ read_fs (struct disks *d)
       if (next)
         *next++ = '\0';
       char dev[128], mount[256], type[32];
-      if (sscanf (line, "%127s %255s %31s", dev, mount, type) == 3
+      char *s = line;
+      if (next_field (&s, dev, sizeof dev)
+          && next_field (&s, mount, sizeof mount)
+          && next_field (&s, type, sizeof type)
           && local_type (type))
         {
           /* A device mounted in several places, as btrfs subvolumes
              often are, is shown once.  */
           bool seen = false;
           for (int i = 0; i < d->nfs; i++)
-            if (strcmp (d->fs[i].device, dev) == 0)
+            if (streq (d->fs[i].device, dev))
               seen = true;
           if (!seen)
             {

@@ -69,7 +69,7 @@ void procs_sample (struct procs *s);
 void procs_close (struct procs *s);
 
 /* Return the process with PID, or NULL.  */
-const struct proc_info *procs_find (const struct procs *s, unsigned int pid);
+const struct proc_info *procs_find (const struct procs *s, unsigned int pid) ATTRIBUTE_PURE;
 
 /* Send signal SIG to process PID, or change its nice value to NICE.
    Return 0 or an errno value; with simulated data, do nothing and

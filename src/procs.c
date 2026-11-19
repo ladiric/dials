@@ -16,6 +16,8 @@
    You should have received a copy of the GNU General Public License
    along with Dials.  If not, see <https://www.gnu.org/licenses/>.  */
 
+#include <config.h>
+
 #include "system.h"
 
 #include <dirent.h>
@@ -46,7 +48,7 @@ by_pid (const void *a, const void *b)
   return (x->pid > y->pid) - (x->pid < y->pid);
 }
 
-static const struct proc_info *
+ATTRIBUTE_PURE static const struct proc_info *
 find (const struct proc_info *list, int n, unsigned int pid)
 {
   struct proc_info key;
@@ -138,7 +140,7 @@ read_proc (struct procs *s, const char *dir, struct proc_info *pi, double dt)
   if (!open || !close_paren || close_paren < open || !close_paren[1])
     return false;
   memset (pi, 0, sizeof *pi);
-  pi->pid = (unsigned int) atoi (buf);
+  pi->pid = (unsigned int) strtoul (buf, NULL, 10);
   str_copy (pi->comm, sizeof pi->comm, open + 1, close_paren - open - 1);
   pi->state = close_paren[2];
 
