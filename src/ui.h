@@ -32,4 +32,16 @@ void ui_open_menu (struct app *a, int menu);
 /* Handle key CH while a menu is open.  */
 void ui_menu_key (struct app *a, int ch);
 
+/* Ask for a line of text, starting with TEXT; call ACCEPT with it.  */
+void ui_prompt (struct app *a, const char *title, const char *label,
+                const char *text, void (*accept) (struct app *, const char *));
+void ui_prompt_key (struct app *a, int ch);
+
+/* Offer the N ITEMS, with SEL chosen at first; call ACCEPT with the
+   index of the one chosen.  */
+void ui_choice (struct app *a, const char *title, const char *label,
+                const char *const *items, int n, int sel,
+                void (*accept) (struct app *, int));
+void ui_choice_key (struct app *a, int ch);
+
 #endif /* DIALS_UI_H */

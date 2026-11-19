@@ -99,6 +99,8 @@ struct nvml
 
   int count;
   nvml_device dev[GPU_MAX];
+  /* Values that do not change, read once.  */
+  double limit_w[GPU_MAX], clock_sm_max[GPU_MAX], clock_mem_max[GPU_MAX];
   /* Per GPU: the newest process sample seen, and the last known use
      of each process, kept for when NVML has no new sample.  */
   unsigned long long last_seen[GPU_MAX];
@@ -201,6 +203,19 @@ nvml_open (void **priv, char *driver, size_t dsize, char *err, size_t esize)
   for (unsigned int i = 0; i < count && n->count < GPU_MAX; i++)
     if (get_handle (i, &n->dev[n->count]) == NVML_SUCCESS)
       n->count++;
+
+  for (int i = 0; i < n->count; i++)
+    {
+      unsigned int v;
+      nvml_device d = n->dev[i];
+      n->limit_w[i] = n->clock_sm_max[i] = n->clock_mem_max[i] = NAN;
+      if (n->power_limit && n->power_limit (d, &v) == NVML_SUCCESS)
+        n->limit_w[i] = v / 1000.0;
+      if (n->max_clock && n->max_clock (d, NVML_CLOCK_SM, &v) == NVML_SUCCESS)
+        n->clock_sm_max[i] = v;
+      if (n->max_clock && n->max_clock (d, NVML_CLOCK_MEM, &v) == NVML_SUCCESS)
+        n->clock_mem_max[i] = v;
+    }
 
   char version[80];
   if (get_driver && get_driver (version, sizeof version) == NVML_SUCCESS)
@@ -379,8 +394,11 @@ read_procs (struct nvml *n, int i, struct gpu_sample *s)
   qsort (s->proc, s->nproc, sizeof s->proc[0], by_memory);
 }
 
+/* Each NVML call takes a little while, so only what the history and
+   the Overview page need is read every time; the rest only while the
+   GPU page shows it.  */
 static void
-nvml_sample (void *priv, int i, bool procs, struct gpu_sample *s)
+nvml_sample (void *priv, int i, bool details, struct gpu_sample *s)
 {
   struct nvml *n = priv;
   nvml_device d = n->dev[i];
@@ -403,16 +421,16 @@ nvml_sample (void *priv, int i, bool procs, struct gpu_sample *s)
     }
   if (n->power && n->power (d, &v) == NVML_SUCCESS)
     s->power = v / 1000.0;
-  if (n->power_limit && n->power_limit (d, &v) == NVML_SUCCESS)
-    s->power_limit = v / 1000.0;
+  s->power_limit = n->limit_w[i];
+  s->clock_sm_max = n->clock_sm_max[i];
+  s->clock_mem_max = n->clock_mem_max[i];
+  if (!details)
+    return;
+
   if (n->clock && n->clock (d, NVML_CLOCK_SM, &v) == NVML_SUCCESS)
     s->clock_sm = v;
   if (n->clock && n->clock (d, NVML_CLOCK_MEM, &v) == NVML_SUCCESS)
     s->clock_mem = v;
-  if (n->max_clock && n->max_clock (d, NVML_CLOCK_SM, &v) == NVML_SUCCESS)
-    s->clock_sm_max = v;
-  if (n->max_clock && n->max_clock (d, NVML_CLOCK_MEM, &v) == NVML_SUCCESS)
-    s->clock_mem_max = v;
   if (n->fan && n->fan (d, &v) == NVML_SUCCESS)
     s->fan = v;
   if (n->encoder && n->encoder (d, &v, &period) == NVML_SUCCESS)
@@ -421,8 +439,7 @@ nvml_sample (void *priv, int i, bool procs, struct gpu_sample *s)
     s->dec = v;
   if (n->pstate && n->pstate (d, &ps) == NVML_SUCCESS && ps >= 0 && ps <= 15)
     s->pstate = ps;
-  if (procs)
-    read_procs (n, i, s);
+  read_procs (n, i, s);
 }
 
 static void

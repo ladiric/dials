@@ -76,19 +76,19 @@ gpus_open (struct gpus *g, bool demo, size_t history)
 }
 
 void
-gpus_sample (struct gpus *g, bool procs)
+gpus_sample (struct gpus *g, bool details)
 {
   for (int i = 0; i < g->count; i++)
     {
       struct gpu_dev *d = &g->dev[i];
       gpu_sample_clear (&d->cur);
-      g->be->sample (g->priv, i, procs, &d->cur);
+      g->be->sample (g->priv, i, details, &d->cur);
       metric_push (&d->temp, d->cur.temp);
       metric_push (&d->util, d->cur.util);
       metric_push (&d->mem, d->cur.mem_used);
       metric_push (&d->power, d->cur.power);
     }
-  g->procs_valid = procs;
+  g->procs_valid = details;
 }
 
 void

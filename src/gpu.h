@@ -64,9 +64,10 @@ struct gpu_backend
                 char *err, size_t esize);
   int (*count) (void *priv);
   void (*name) (void *priv, int i, char *buf, size_t size);
-  /* Read GPU I into OUT, which is cleared first; list its processes
-     too if PROCS.  */
-  void (*sample) (void *priv, int i, bool procs, struct gpu_sample *out);
+  /* Read GPU I into OUT, which is cleared first.  If DETAILS, read
+     everything the GPU page shows, its processes included; else only
+     temperature, utilization, memory and power.  */
+  void (*sample) (void *priv, int i, bool details, struct gpu_sample *out);
   void (*close) (void *priv);
 };
 
@@ -85,14 +86,14 @@ struct gpus
   const struct gpu_backend *be;
   void *priv;
   int count;
-  bool procs_valid;		/* Whether the last sample read processes.  */
+  bool procs_valid;		/* Whether the last sample read details.  */
   char driver[64];		/* Driver version, if known.  */
   char error[160];		/* Why there are no GPUs, if there are none.  */
   struct gpu_dev dev[GPU_MAX];
 };
 
 void gpus_open (struct gpus *g, bool demo, size_t history);
-void gpus_sample (struct gpus *g, bool procs);
+void gpus_sample (struct gpus *g, bool details);
 void gpus_clear_history (struct gpus *g);
 void gpus_close (struct gpus *g);
 void gpu_sample_clear (struct gpu_sample *s);

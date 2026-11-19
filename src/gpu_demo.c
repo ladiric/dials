@@ -97,7 +97,7 @@ demo_name (void *priv, int i, char *buf, size_t size)
 }
 
 static void
-demo_sample (void *priv, int i, bool procs, struct gpu_sample *s)
+demo_sample (void *priv, int i, bool details, struct gpu_sample *s)
 {
   static const double jumps[] = { 5, 20, 55, 85, 99 };
   struct demo_gpus *p = priv;
@@ -126,7 +126,7 @@ demo_sample (void *priv, int i, bool procs, struct gpu_sample *s)
   s->dec = 0;
   s->pstate = g->util > 5 ? 2 : 8;
 
-  if (procs)
+  if (details)
     for (size_t k = 0; k < ARRAY_CARDINALITY (demo_procs); k++)
       {
         struct gpu_proc *gp = &s->proc[s->nproc++];

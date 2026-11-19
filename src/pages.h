@@ -33,10 +33,12 @@ struct page
   const char *id;		/* Name for --page.  */
   const char *title;		/* Untranslated; use _().  */
   void (*draw) (struct app *a, struct canvas *cv, struct rect r);
-  const char *const *planned;	/* Untranslated, NULL-terminated.  */
   /* Handle key CH if it means something on this page; return whether
      it did.  May be NULL.  */
   bool (*key) (struct app *a, int ch);
+  /* Labels for function keys F1 to F10 that this page uses for its own
+     commands, untranslated; NULL keeps the usual label.  */
+  const char *const *fkeys;
 };
 
 extern const struct page pages[];
@@ -46,13 +48,19 @@ extern const size_t page_count;
 int page_find (const char *id);
 
 void page_overview_draw (struct app *a, struct canvas *cv, struct rect r);
-void page_placeholder_draw (struct app *a, struct canvas *cv,
-                            struct rect r);
 void page_cpu_draw (struct app *a, struct canvas *cv, struct rect r);
 void page_memory_draw (struct app *a, struct canvas *cv, struct rect r);
 void page_disk_draw (struct app *a, struct canvas *cv, struct rect r);
 bool page_disk_key (struct app *a, int ch);
 void page_gpu_draw (struct app *a, struct canvas *cv, struct rect r);
 bool page_gpu_key (struct app *a, int ch);
+void page_net_draw (struct app *a, struct canvas *cv, struct rect r);
+bool page_net_key (struct app *a, int ch);
+void page_proc_draw (struct app *a, struct canvas *cv, struct rect r);
+bool page_proc_key (struct app *a, int ch);
+extern const char *const page_proc_fkeys[10];
+void page_sensors_draw (struct app *a, struct canvas *cv, struct rect r);
+bool page_sensors_key (struct app *a, int ch);
+void page_power_draw (struct app *a, struct canvas *cv, struct rect r);
 
 #endif /* DIALS_PAGES_H */

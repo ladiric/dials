@@ -20,42 +20,21 @@
 
 #include "pages.h"
 
-static const char *const network_plan[] = {
-  N_("Receive and transmit rates per interface"),
-  N_("Errors, drops, link speed and addresses"),
-  N_("TCP connections by state"),
-  NULL
-};
-
-static const char *const processes_plan[] = {
-  N_("A process table you can sort and filter"),
-  N_("Tree view; F8 kills and F7 renices a process"),
-  NULL
-};
-
-static const char *const sensors_plan[] = {
-  N_("Every temperature, fan and voltage sensor"),
-  N_("Lowest and highest readings since start"),
-  NULL
-};
-
-static const char *const power_plan[] = {
-  N_("Battery charge, rate and time remaining"),
-  N_("Processor package and memory power (RAPL)"),
-  NULL
-};
-
 const struct page pages[] = {
-  { "overview", N_("Overview"), page_overview_draw, NULL, NULL },
-  { "cpu", N_("CPU"), page_cpu_draw, NULL, NULL },
-  { "memory", N_("Memory"), page_memory_draw, NULL, NULL },
-  { "gpu", N_("GPU"), page_gpu_draw, NULL, page_gpu_key },
-  { "disk", N_("Disks"), page_disk_draw, NULL, page_disk_key },
-  { "network", N_("Network"), page_placeholder_draw, network_plan, NULL },
-  { "processes", N_("Processes"), page_placeholder_draw,
-    processes_plan, NULL },
-  { "sensors", N_("Sensors"), page_placeholder_draw, sensors_plan, NULL },
-  { "power", N_("Power"), page_placeholder_draw, power_plan, NULL },
+  { .id = "overview", .title = N_("Overview"), .draw = page_overview_draw },
+  { .id = "cpu", .title = N_("CPU"), .draw = page_cpu_draw },
+  { .id = "memory", .title = N_("Memory"), .draw = page_memory_draw },
+  { .id = "gpu", .title = N_("GPU"), .draw = page_gpu_draw,
+    .key = page_gpu_key },
+  { .id = "disk", .title = N_("Disks"), .draw = page_disk_draw,
+    .key = page_disk_key },
+  { .id = "network", .title = N_("Network"), .draw = page_net_draw,
+    .key = page_net_key },
+  { .id = "processes", .title = N_("Processes"), .draw = page_proc_draw,
+    .key = page_proc_key, .fkeys = page_proc_fkeys },
+  { .id = "sensors", .title = N_("Sensors"), .draw = page_sensors_draw,
+    .key = page_sensors_key },
+  { .id = "power", .title = N_("Power"), .draw = page_power_draw },
 };
 
 const size_t page_count = ARRAY_CARDINALITY (pages);

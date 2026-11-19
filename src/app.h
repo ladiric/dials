@@ -28,6 +28,10 @@
 #include "gpu.h"
 #include "memory.h"
 #include "metric.h"
+#include "net.h"
+#include "power.h"
+#include "procs.h"
+#include "sensors.h"
 #include "source.h"
 
 enum app_mode
@@ -35,7 +39,39 @@ enum app_mode
   MODE_NORMAL,
   MODE_MENU,			/* A pull-down menu is open.  */
   MODE_HELP,
-  MODE_ABOUT
+  MODE_ABOUT,
+  MODE_PROMPT,			/* A line of text is being typed.  */
+  MODE_CHOICE			/* A list of choices is open.  */
+};
+
+struct app;
+
+/* A one-line text prompt.  ACCEPT gets the text when Enter is
+   pressed.  */
+struct prompt
+{
+  char title[64];
+  char label[160];
+  char text[128];
+  void (*accept) (struct app *a, const char *text);
+};
+
+/* A list to choose from.  ACCEPT gets the index of the choice.  */
+enum { CHOICE_MAX = 12 };
+struct choice
+{
+  char title[64];
+  char label[160];
+  const char *items[CHOICE_MAX];
+  int n, sel;
+  void (*accept) (struct app *a, int index);
+};
+
+/* How the Processes page orders the processes.  */
+enum proc_sort
+{
+  SORT_CPU, SORT_MEM, SORT_PID, SORT_USER, SORT_NAME, SORT_TIME,
+  SORT_COUNT
 };
 
 struct app
@@ -48,8 +84,24 @@ struct app
   struct memory mem;
   struct disks disks;
   struct gpus gpus;
+  struct net net;
+  struct procs procs;
+  struct sensors sensors;
+  struct power power;
   size_t disk_sel;		/* Disk shown in detail on the Disks page.  */
   size_t gpu_sel;		/* GPU shown in detail on the GPU page.  */
+  size_t net_sel;		/* Interface shown in detail.  */
+  size_t sensor_sel;		/* Sensor whose history is graphed.  */
+  unsigned int proc_pid;	/* Selected process, or 0.  */
+  int proc_top;			/* First row shown of the process list.  */
+  enum proc_sort proc_sort;
+  bool proc_tree;		/* Show processes as a tree.  */
+  char proc_filter[128];	/* Show only processes matching this.  */
+  struct prompt prompt;
+  struct choice choice;
+  char message[200];		/* A short note in the menu bar.  */
+  bool message_error;
+  double message_until;		/* When to stop showing it.  */
   double interval;		/* Seconds between samples.  */
   bool paused, quit, dirty, demo;
   size_t page;			/* Index into pages[].  */
@@ -75,5 +127,9 @@ void app_step_interval (struct app *a, int dir);
 void app_toggle_pause (struct app *a);
 void app_reset_history (struct app *a);
 void app_next_theme (struct app *a);
+
+/* Show a short note in the menu bar for a few seconds.  */
+void app_message (struct app *a, bool error, const char *format, ...)
+  __attribute__ ((__format__ (__printf__, 3, 4)));
 
 #endif /* DIALS_APP_H */

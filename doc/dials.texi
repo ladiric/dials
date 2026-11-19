@@ -72,9 +72,7 @@ Dials reads its measurements from @file{/proc} and @file{/sys}.  It
 keeps the files it reads open and rereads them in place, so it uses
 very little of the processor time it measures.
 
-This is an early version.  The Overview, CPU, Memory, GPU and Disks
-pages show measurements; the other pages describe what they will
-show.
+This is an early version, and its pages may still change.
 
 @node Invoking dials
 @chapter Invoking @command{dials}
@@ -158,6 +156,10 @@ graph tells how much time it spans.  Bars and graphs are green below
 * Memory page::         Memory and swap.
 * GPU page::            Graphics processors.
 * Disks page::          Disks and file systems.
+* Network page::        Interfaces and connections.
+* Processes page::      The running processes.
+* Sensors page::        Temperatures, fans and voltages.
+* Power page::          Batteries and power use.
 @end menu
 
 @node Overview page
@@ -270,6 +272,94 @@ mounted in several places, as Btrfs subvolumes often are, is listed
 once.  Network file systems are left out, because measuring one that
 does not answer would stop the program.
 
+@node Network page
+@section The Network page
+@cindex Network page
+@cindex interfaces
+
+The list at the top has one line per network interface: its state,
+link speed, the rates at which it receives and sends, and the bytes
+received and sent since it came up.  Interfaces backed by hardware
+come first, then virtual ones such as bridges and tunnels, and the
+loopback last.  Interfaces that appear or go away while Dials runs
+are added and removed.  Choose one with @key{UP} and @key{DOWN}.
+
+Below are the chosen interface's hardware address, MTU, packet rates,
+errors and drops, and its addresses, followed by graphs of what it
+receives and sends.  The last line counts TCP connections by state
+and UDP sockets.
+
+@node Processes page
+@section The Processes page
+@cindex Processes page
+@cindex signals, sending
+@cindex nice value
+
+The first line counts the tasks by state and their threads.  Below,
+one line per process gives its PID, user, state, nice value, threads,
+share of a processor, share of memory, memory used, processor time
+and command.  Kernel threads, which have no command line, are shown
+by name in brackets.
+
+@table @kbd
+@item @key{UP}
+@itemx @key{DOWN}
+@itemx @key{PgUp}
+@itemx @key{PgDn}
+Choose a process.  The choice follows the process as the list is
+sorted again.
+@item F5
+Sort by processor use, memory, PID, user, name or processor time, in
+turn.
+@item F6
+Show the processes as a tree, each under its parent, or as a list.
+@item /
+Show only the processes whose name or command contains some text,
+ignoring case.  An empty text shows all again.
+@item F7
+Change the chosen process's nice value.  Raising it is allowed for
+your own processes; lowering it needs root privileges.
+@item F8
+Send a signal to the chosen process: TERM to ask it to end, KILL to
+end it at once, HUP, INT, STOP to pause it or CONT to let it continue.
+Nothing is sent until you press @key{RET}.
+@end table
+
+On this page, F7 and F8 do these instead of their usual jobs; use
+@kbd{r} to clear the history.  With @option{--demo}, no signal is
+sent and no nice value changed.
+
+@node Sensors page
+@section The Sensors page
+@cindex Sensors page
+@cindex hardware monitoring
+
+The table lists every temperature, fan, voltage, current and power
+input of the hardware monitoring drivers, grouped by chip, with its
+reading now, the lowest and highest seen, and the limit the driver
+gives.  Chips that share a driver, such as one per memory module, are
+numbered.  Readings are colored by how near they are to their limit.
+Choose a sensor with @key{UP}, @key{DOWN}, @key{PgUp} and @key{PgDn}
+to see its history in the graph below.
+
+@node Power page
+@section The Power page
+@cindex Power page
+@cindex batteries
+@cindex RAPL
+
+The page lists batteries: the system's own, with its charge, state,
+time left, rate, health against its design capacity, charge cycles
+and voltage, and those of devices such as a wireless mouse, which
+often report only a level such as @samp{Normal}.  Mains and USB power
+supplies show whether they are connected.
+
+Processor power comes from RAPL, where the hardware has it; most
+systems let only root read it, and the page says so.  Power readings
+from hardware monitoring, such as those of a power supply, are listed
+too.  The graph shows the processor package's power, or else the
+first power reading, or else the battery's charge.
+
 @node Keys
 @chapter Keys
 @cindex keys
@@ -303,7 +393,10 @@ Quit.
 Go to a page.
 @item @key{UP}
 @itemx @key{DOWN}
-Choose a disk on the Disks page, or a GPU on the GPU page.
+Choose a disk, interface, process, sensor or GPU on its page.
+@item F5 @dots{} F8
+@itemx /
+Commands of the Processes page.  @xref{Processes page}.
 @item C-@key{PgUp}
 @itemx C-@key{PgDn}
 Go to the previous or next page.

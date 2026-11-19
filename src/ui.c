@@ -231,6 +231,23 @@ ui_draw_menubar (struct app *a)
   int sw = text_width (status);
   if (x + sw <= cv->w)
     canvas_put (cv, 0, cv->w - sw, sw, status, ST_MENU);
+
+  /* A recent note takes the place of the status.  */
+  if (a->message[0] && now_mono () < a->message_until)
+    {
+      char note[220];
+      snprintf (note, sizeof note, " %s ", a->message);
+      int nw = text_width (note);
+      if (nw > cv->w - x)
+        nw = cv->w - x;
+      if (nw > 0)
+        {
+          canvas_fill (cv, (struct rect) { 0, cv->w - nw, 1, nw },
+                       a->message_error ? ST_ALERT : ST_KEY);
+          canvas_put (cv, 0, cv->w - nw, nw, note,
+                      a->message_error ? ST_ALERT : ST_KEY);
+        }
+    }
 }
 
 void
@@ -241,6 +258,10 @@ ui_draw_fkeys (struct app *a)
     _("Help"), a->paused ? _("Resume") : _("Pause"), _("Slower"),
     _("Faster"), "", "", _("Reset"), "", _("Menu"), _("Quit")
   };
+  const char *const *own = pages[a->page].fkeys;
+  for (int i = 0; own && i < 10; i++)
+    if (own[i])
+      labels[i] = _(own[i]);
   int y = cv->h - 1, slot = cv->w / 10;
 
   for (int i = 0; i < 10; i++)
@@ -307,7 +328,10 @@ draw_help (struct app *a)
     { "F9", N_("Open the menu bar") },
     { "F10  q", N_("Quit") },
     { "1-9  Alt-1..9", N_("Go to a page") },
-    { "Up  Down", N_("Choose a disk or a GPU") },
+    { "Up  Down", N_("Choose a disk, interface, sensor or GPU") },
+    { "F5  F6", N_("Processes: sort; show as a tree") },
+    { "F7  F8", N_("Processes: change nice value; send a signal") },
+    { "/", N_("Processes: filter by name or command") },
     { "Ctrl-PgUp/PgDn", N_("Previous or next page") },
     { "t", N_("Next color theme") },
   };
@@ -345,10 +369,177 @@ draw_about (struct app *a)
 }
 
 void
+ui_prompt (struct app *a, const char *title, const char *label,
+           const char *text, void (*accept) (struct app *, const char *))
+{
+  struct prompt *p = &a->prompt;
+  str_copy (p->title, sizeof p->title, title, strlen (title));
+  str_copy (p->label, sizeof p->label, label, strlen (label));
+  str_copy (p->text, sizeof p->text, text, strlen (text));
+  p->accept = accept;
+  a->mode = MODE_PROMPT;
+}
+
+void
+ui_prompt_key (struct app *a, int ch)
+{
+  struct prompt *p = &a->prompt;
+  size_t len = strlen (p->text);
+
+  switch (ch)
+    {
+    case '\n':
+    case '\r':
+    case KEY_ENTER:
+      a->mode = MODE_NORMAL;
+      p->accept (a, p->text);
+      return;
+    case KEY_F (10):
+      a->mode = MODE_NORMAL;
+      return;
+    case KEY_BACKSPACE:
+    case 127:
+    case 8:
+      /* Remove a whole UTF-8 character: its continuation bytes, then
+         its first byte.  */
+      while (len > 0 && ((unsigned char) p->text[len - 1] & 0xC0) == 0x80)
+        len--;
+      if (len > 0)
+        len--;
+      p->text[len] = '\0';
+      return;
+    case 21:			/* Ctrl-U clears the line.  */
+      p->text[0] = '\0';
+      return;
+    default:
+      /* Characters arrive one byte at a time, UTF-8 included.  */
+      if (ch >= 32 && ch < 256 && ch != 127 && len + 1 < sizeof p->text)
+        {
+          p->text[len] = (char) ch;
+          p->text[len + 1] = '\0';
+        }
+      return;
+    }
+}
+
+void
+ui_choice (struct app *a, const char *title, const char *label,
+           const char *const *items, int n, int sel,
+           void (*accept) (struct app *, int))
+{
+  struct choice *c = &a->choice;
+  str_copy (c->title, sizeof c->title, title, strlen (title));
+  str_copy (c->label, sizeof c->label, label, strlen (label));
+  c->n = n < CHOICE_MAX ? n : CHOICE_MAX;
+  for (int i = 0; i < c->n; i++)
+    c->items[i] = items[i];
+  c->sel = sel;
+  c->accept = accept;
+  a->mode = MODE_CHOICE;
+}
+
+void
+ui_choice_key (struct app *a, int ch)
+{
+  struct choice *c = &a->choice;
+  switch (ch)
+    {
+    case KEY_UP:
+      c->sel = (c->sel + c->n - 1) % c->n;
+      break;
+    case KEY_DOWN:
+      c->sel = (c->sel + 1) % c->n;
+      break;
+    case KEY_HOME:
+      c->sel = 0;
+      break;
+    case KEY_END:
+      c->sel = c->n - 1;
+      break;
+    case '\n':
+    case '\r':
+    case KEY_ENTER:
+      a->mode = MODE_NORMAL;
+      c->accept (a, c->sel);
+      break;
+    case KEY_F (10):
+      a->mode = MODE_NORMAL;
+      break;
+    default:
+      break;
+    }
+}
+
+/* A dialog box W wide and H high in the middle of the screen.  */
+static struct rect
+dialog_box (struct canvas *cv, const char *title, int w, int h)
+{
+  if (w > cv->w)
+    w = cv->w;
+  if (h > cv->h)
+    h = cv->h;
+  struct rect r = { (cv->h - h) / 2, (cv->w - w) / 2, h, w };
+  canvas_fill (cv, r, ST_DLG);
+  canvas_box (cv, r, ST_DLG_FRAME, true);
+  canvas_title (cv, r.y, r.x, r.w, title, ST_DLG_TITLE);
+  return r;
+}
+
+static void
+draw_prompt (struct app *a)
+{
+  struct canvas *cv = &a->cv;
+  struct prompt *p = &a->prompt;
+  const char *hint = _("Enter accepts, Esc cancels");
+  int w = text_width (p->label);
+  if (w < 40)
+    w = 40;
+  struct rect r = dialog_box (cv, p->title, w + 6, 7);
+  int x = r.x + 3, fw = r.w - 6;
+
+  canvas_put (cv, r.y + 2, x, fw, p->label, ST_DLG);
+  canvas_fill (cv, (struct rect) { r.y + 3, x, 1, fw }, ST_SEL);
+  /* Show the end of a text too long for the field.  */
+  const char *t = p->text;
+  while (text_width (t) > fw - 1)
+    t++;
+  int tw = canvas_put (cv, r.y + 3, x, fw - 1, t, ST_SEL);
+  canvas_putwc (cv, r.y + 3, x + tw, L'_', ST_SEL);
+  canvas_put_center (cv, r.y + 5, x, fw, hint, ST_DLG);
+}
+
+static void
+draw_choice (struct app *a)
+{
+  struct canvas *cv = &a->cv;
+  struct choice *c = &a->choice;
+  int w = text_width (c->label);
+  for (int i = 0; i < c->n; i++)
+    if (text_width (c->items[i]) + 4 > w)
+      w = text_width (c->items[i]) + 4;
+  struct rect r = dialog_box (cv, c->title, w + 6, c->n + 5);
+  int x = r.x + 3, fw = r.w - 6;
+
+  canvas_put (cv, r.y + 2, x, fw, c->label, ST_DLG);
+  for (int i = 0; i < c->n; i++)
+    {
+      int st = i == c->sel ? ST_SEL : ST_DLG;
+      canvas_fill (cv, (struct rect) { r.y + 3 + i, x, 1, fw }, st);
+      canvas_put (cv, r.y + 3 + i, x + 2, fw - 2, c->items[i], st);
+    }
+}
+
+void
 ui_draw_overlay (struct app *a)
 {
   switch (a->mode)
     {
+    case MODE_PROMPT:
+      draw_prompt (a);
+      break;
+    case MODE_CHOICE:
+      draw_choice (a);
+      break;
     case MODE_MENU:
       draw_pulldown (a);
       break;

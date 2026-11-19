@@ -22,6 +22,19 @@ Dials NEWS                                    -*- outline -*-
   The Disks page shows the throughput, busy time, latency and
   temperature of each disk, and the space on each local file system.
 
+  The Network page shows each interface's state, speed, traffic,
+  addresses and history, and counts connections by state.
+
+  The Processes page lists the processes as a list or a tree, sorted by
+  processor use, memory, PID, user, name or time, and filtered by
+  name.  F7 changes a process's nice value and F8 sends it a signal.
+
+  The Sensors page lists every hardware monitoring sensor with its
+  lowest and highest readings and its limit, and graphs one of them.
+
+  The Power page shows batteries, power supplies, processor power from
+  RAPL and power readings from hardware monitoring.
+
   The GPU page lists NVIDIA graphics processors with their
   temperature, utilization, video memory, power, clocks and fan speed,
   graphs of their history, and the processes using them.  Dials reads

@@ -16,8 +16,13 @@ dials_SOURCES = \
   main.c \
   memory.c memory.h \
   metric.c metric.h \
-  page_cpu.c page_disk.c page_gpu.c page_memory.c page_overview.c \
-  page_placeholder.c pages.c pages.h \
+  net.c net.h \
+  power.c power.h \
+  procs.c procs.h \
+  page_cpu.c page_disk.c page_gpu.c page_memory.c page_net.c \
+  page_overview.c page_power.c page_proc.c page_sensors.c \
+  pages.c pages.h \
+  sensors.c sensors.h \
   source.c source.h source_demo.c source_linux.c \
   system.h \
   theme.c theme.h \

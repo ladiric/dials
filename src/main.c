@@ -34,6 +34,10 @@
 #include "disk.h"
 #include "gpu.h"
 #include "memory.h"
+#include "net.h"
+#include "power.h"
+#include "procs.h"
+#include "sensors.h"
 #include "pages.h"
 #include "source.h"
 #include "theme.h"
@@ -158,6 +162,10 @@ report (struct source *src, bool demo)
   static struct memory mem;
   static struct disks disks;
   static struct gpus gpus;
+  static struct net net;
+  static struct procs procs;
+  static struct sensors sensors;
+  static struct power power;
   static struct report r;
   struct sys_info in;
   struct sys_sample s;
@@ -169,12 +177,20 @@ report (struct source *src, bool demo)
   memory_open (&mem, demo, 1);
   disks_open (&disks, demo, 1);
   gpus_open (&gpus, demo, 1);
+  net_open (&net, demo, 1);
+  procs_open (&procs, demo);
+  sensors_open (&sensors, demo, 1);
+  power_open (&power, demo, 1);
   nanosleep (&pause, NULL);	/* Use and rates need two readings.  */
   source_sample (src, &s);
   cpu_sample (&cpu);
   memory_sample (&mem, false);
   disks_sample (&disks, true);
   gpus_sample (&gpus, false);
+  net_sample (&net, true);
+  procs_sample (&procs);
+  sensors_sample (&sensors);
+  power_sample (&power);
 
   add_line (&r, _("Host"), in.host);
   add_line (&r, _("System"), in.os);
@@ -228,19 +244,22 @@ report (struct source *src, bool demo)
   else
     snprintf (v, sizeof v, "%s", _("no swap"));
   add_line (&r, _("Swap"), v);
+  snprintf (v, sizeof v, _("%d (%d running), %d threads"), procs.n,
+            procs.running, procs.threads);
+  add_line (&r, _("Processes"), v);
 
   /* One line per GPU, or why there is none.  */
   for (int i = 0; i < gpus.count; i++)
     {
       const struct gpu_sample *gs = &gpus.dev[i].cur;
-      char label[48], temp[32], util[16], vram[64], power[48];
+      char label[48], temp[32], util[16], vram[64], watts[48];
       fmt_temp (temp, sizeof temp, gs->temp);
       fmt_pct (util, sizeof util, gs->util);
       fmt_used_total (vram, sizeof vram, gs->mem_used, gs->mem_total);
-      fmt_of_limit (power, sizeof power, gs->power, gs->power_limit, "W");
+      fmt_of_limit (watts, sizeof watts, gs->power, gs->power_limit, "W");
       snprintf (label, sizeof label, _("GPU %d"), i);
       snprintf (v, sizeof v, "%s, %s, %s, %s, %s",
-                gpus.dev[i].name, temp, util, vram, power);
+                gpus.dev[i].name, temp, util, vram, watts);
       add_line (&r, label, v);
     }
   if (gpus.count == 0)
@@ -278,6 +297,81 @@ report (struct source *src, bool demo)
       add_line (&r, f->mount, v);
     }
 
+  /* Interfaces with hardware behind them or a routable address; the
+     link-local addresses that every interface has are left out.  */
+  for (int i = 0; i < net.n; i++)
+    {
+      const struct net_if *d = &net.dev[i];
+      int routable = 0;
+      for (int k = 0; k < d->naddr; k++)
+        routable += strncmp (d->addr[k], "fe80:", 5) != 0;
+      if (strcmp (d->name, "lo") == 0 || (!d->physical && routable == 0))
+        continue;
+      char label[64];
+      snprintf (label, sizeof label, _("Interface %s"), d->name);
+      snprintf (v, sizeof v, "%s", d->state[0] ? d->state : "?");
+      if (!isnan (d->speed))
+        snprintf (v + strlen (v), sizeof v - strlen (v), _(", %g Mb/s"),
+                  d->speed);
+      for (int k = 0; k < d->naddr; k++)
+        if (strncmp (d->addr[k], "fe80:", 5) != 0)
+          snprintf (v + strlen (v), sizeof v - strlen (v), ", %s",
+                    d->addr[k]);
+      add_line (&r, label, v);
+    }
+  if (net.conns.valid)
+    {
+      snprintf (v, sizeof v, _("%.0f established, %.0f listening, %.0f UDP"),
+                net.conns.established, net.conns.listening, net.conns.udp);
+      add_line (&r, _("Connections"), v);
+    }
+
+  for (int i = 0; i < power.nbat; i++)
+    {
+      const struct battery *b = &power.bat[i];
+      char label[64];
+      snprintf (label, sizeof label, _("Battery %s"), b->name);
+      if (isnan (b->capacity))
+        snprintf (a1, sizeof a1, "%s", b->level[0] ? b->level : _("n/a"));
+      else
+        snprintf (a1, sizeof a1, "%.0f%%", b->capacity);
+      snprintf (v, sizeof v, "%s, %s, %s", b->model[0] ? b->model : "?", a1,
+                b->status[0] ? b->status : "?");
+      if (!isnan (b->time_left))
+        {
+          long m = (long) (b->time_left / 60 + 0.5);
+          snprintf (v + strlen (v), sizeof v - strlen (v),
+                    _(", %ld:%02ld left"), m / 60, m % 60);
+        }
+      add_line (&r, label, v);
+    }
+  for (int i = 0; i < power.nsup; i++)
+    {
+      char label[64];
+      snprintf (label, sizeof label, _("Power supply %s"), power.sup[i].name);
+      add_line (&r, label, power.sup[i].online ? _("connected")
+                : _("not connected"));
+    }
+
+  /* The sensors, and the hottest of them.  */
+  if (sensors.n > 0)
+    {
+      const struct sensor *hot = NULL;
+      for (int i = 0; i < sensors.n; i++)
+        if (sensors.s[i].kind == SENSOR_TEMP && !isnan (sensors.s[i].value)
+            && (!hot || sensors.s[i].value > hot->value))
+          hot = &sensors.s[i];
+      if (hot)
+        {
+          fmt_temp (a1, sizeof a1, hot->value);
+          snprintf (v, sizeof v, _("%d, hottest %s %s at %s"), sensors.n,
+                    hot->chip, hot->label, a1);
+        }
+      else
+        snprintf (v, sizeof v, "%d", sensors.n);
+      add_line (&r, _("Sensors"), v);
+    }
+
   int width = 0;
   for (int i = 0; i < r.n; i++)
     {
@@ -295,6 +389,10 @@ report (struct source *src, bool demo)
   memory_close (&mem);
   disks_close (&disks);
   gpus_close (&gpus);
+  net_close (&net);
+  procs_close (&procs);
+  sensors_close (&sensors);
+  power_close (&power);
 }
 
 int

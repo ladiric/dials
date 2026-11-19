@@ -22,6 +22,7 @@
 #include <error.h>
 #include <poll.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/timerfd.h>
@@ -32,6 +33,7 @@
 #include "pages.h"
 #include "theme.h"
 #include "ui.h"
+#include "util.h"
 
 /* For tigetstr.  It defines many short macros, so only this file
    includes it.  */
@@ -68,6 +70,10 @@ app_init (struct app *a, struct source *src, double interval, size_t page,
   memory_open (&a->mem, demo, HISTORY);
   disks_open (&a->disks, demo, HISTORY);
   gpus_open (&a->gpus, demo, HISTORY);
+  net_open (&a->net, demo, HISTORY);
+  procs_open (&a->procs, demo);
+  sensors_open (&a->sensors, demo, HISTORY);
+  power_open (&a->power, demo, HISTORY);
 }
 
 void
@@ -80,6 +86,10 @@ app_fini (struct app *a)
   memory_close (&a->mem);
   disks_close (&a->disks);
   gpus_close (&a->gpus);
+  net_close (&a->net);
+  procs_close (&a->procs);
+  sensors_close (&a->sensors);
+  power_close (&a->power);
 }
 
 void
@@ -94,6 +104,11 @@ app_sample (struct app *a)
   memory_sample (&a->mem, shown == page_memory_draw);
   disks_sample (&a->disks, shown == page_disk_draw);
   gpus_sample (&a->gpus, shown == page_gpu_draw);
+  net_sample (&a->net, shown == page_net_draw);
+  if (shown == page_proc_draw)
+    procs_sample (&a->procs);
+  sensors_sample (&a->sensors);
+  power_sample (&a->power);
   a->dirty = true;
 }
 
@@ -121,8 +136,25 @@ arm_timer (struct app *a, double first)
 void
 app_set_page (struct app *a, size_t page)
 {
-  if (page < page_count)
-    a->page = page;
+  if (page < page_count && page != a->page)
+    {
+      a->page = page;
+      /* Show the processes at once instead of after the next sample.  */
+      if (pages[page].draw == page_proc_draw)
+        procs_sample (&a->procs);
+    }
+  a->dirty = true;
+}
+
+void
+app_message (struct app *a, bool error, const char *format, ...)
+{
+  va_list ap;
+  va_start (ap, format);
+  vsnprintf (a->message, sizeof a->message, format, ap);
+  va_end (ap);
+  a->message_error = error;
+  a->message_until = now_mono () + 4;
   a->dirty = true;
 }
 
@@ -173,6 +205,9 @@ app_reset_history (struct app *a)
   memory_clear_history (&a->mem);
   disks_clear_history (&a->disks);
   gpus_clear_history (&a->gpus);
+  net_clear_history (&a->net);
+  sensors_clear_history (&a->sensors);
+  power_clear_history (&a->power);
   a->dirty = true;
 }
 
@@ -240,6 +275,12 @@ handle_key (struct app *a, int ch)
       return;
     case MODE_MENU:
       ui_menu_key (a, ch);
+      return;
+    case MODE_PROMPT:
+      ui_prompt_key (a, ch);
+      return;
+    case MODE_CHOICE:
+      ui_choice_key (a, ch);
       return;
     case MODE_NORMAL:
       break;
