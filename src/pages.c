@@ -36,13 +36,6 @@ static const char *const memory_plan[] = {
   NULL
 };
 
-static const char *const gpu_plan[] = {
-  N_("NVIDIA through NVML; AMD and Intel through sysfs"),
-  N_("Utilization, video memory, temperature, power, clocks, fans"),
-  N_("GPU use per process"),
-  NULL
-};
-
 static const char *const disk_plan[] = {
   N_("Throughput, operations, utilization and latency per device"),
   N_("Space used on each mounted file system"),
@@ -76,16 +69,16 @@ static const char *const power_plan[] = {
 };
 
 const struct page pages[] = {
-  { "overview", N_("Overview"), page_overview_draw, NULL },
-  { "cpu", N_("CPU"), page_placeholder_draw, cpu_plan },
-  { "memory", N_("Memory"), page_placeholder_draw, memory_plan },
-  { "gpu", N_("GPU"), page_placeholder_draw, gpu_plan },
-  { "disk", N_("Disks"), page_placeholder_draw, disk_plan },
-  { "network", N_("Network"), page_placeholder_draw, network_plan },
+  { "overview", N_("Overview"), page_overview_draw, NULL, NULL },
+  { "cpu", N_("CPU"), page_placeholder_draw, cpu_plan, NULL },
+  { "memory", N_("Memory"), page_placeholder_draw, memory_plan, NULL },
+  { "gpu", N_("GPU"), page_gpu_draw, NULL, page_gpu_key },
+  { "disk", N_("Disks"), page_placeholder_draw, disk_plan, NULL },
+  { "network", N_("Network"), page_placeholder_draw, network_plan, NULL },
   { "processes", N_("Processes"), page_placeholder_draw,
-    processes_plan },
-  { "sensors", N_("Sensors"), page_placeholder_draw, sensors_plan },
-  { "power", N_("Power"), page_placeholder_draw, power_plan },
+    processes_plan, NULL },
+  { "sensors", N_("Sensors"), page_placeholder_draw, sensors_plan, NULL },
+  { "power", N_("Power"), page_placeholder_draw, power_plan, NULL },
 };
 
 const size_t page_count = ARRAY_CARDINALITY (pages);

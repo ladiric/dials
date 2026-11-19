@@ -10,9 +10,10 @@ dials_SOURCES = \
   app.c app.h \
   canvas.c canvas.h \
   gettext.h \
+  gpu.c gpu.h gpu_demo.c gpu_nvml.c \
   main.c \
   metric.c metric.h \
-  page_overview.c page_placeholder.c pages.c pages.h \
+  page_gpu.c page_overview.c page_placeholder.c pages.c pages.h \
   source.c source.h source_demo.c source_linux.c \
   system.h \
   theme.c theme.h \

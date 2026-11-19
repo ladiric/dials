@@ -51,5 +51,14 @@ void fmt_uptime (char *buf, size_t size, double seconds);
 void fmt_interval (char *buf, size_t size, double seconds);
 void fmt_mib (char *buf, size_t size, double mib);
 void fmt_used_total (char *buf, size_t size, double used, double total);
+void fmt_temp (char *buf, size_t size, double celsius);
+void fmt_pct (char *buf, size_t size, double pct);
+void fmt_watts (char *buf, size_t size, double watts);
+void fmt_of_limit (char *buf, size_t size, double v, double limit,
+                   const char *unit);
+
+/* Whether the locale uses UTF-8, so that symbols such as the degree
+   sign can be shown.  */
+bool utf8_locale (void);
 
 #endif /* DIALS_UTIL_H */

@@ -19,6 +19,7 @@
 #ifndef DIALS_METRIC_H
 #define DIALS_METRIC_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 /* A ring buffer of samples.  NaN marks a sample that could not be
@@ -41,5 +42,10 @@ double metric_at (const struct metric *m, size_t i);
 
 /* Return the newest sample, or NaN if there is none.  */
 double metric_last (const struct metric *m);
+
+/* Store the lowest, mean and highest of the samples held.  Return
+   false if there are none.  */
+bool metric_stats (const struct metric *m, double *min, double *avg,
+                   double *max);
 
 #endif /* DIALS_METRIC_H */

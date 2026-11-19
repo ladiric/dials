@@ -1,7 +1,7 @@
 #! /bin/sh
 # Check the plain-text report, with simulated and with real data.
 out=$("$DIALS" --demo --once) || exit 1
-for want in 'Host:' 'Memory:' 'Demo CPU'; do
+for want in 'Host:' 'Memory:' 'Demo CPU' 'GPU 1:' 'Demo GPU 40 GB'; do
   case $out in
     *"$want"*) ;;
     *) echo "--demo --once output lacks '$want':" >&2

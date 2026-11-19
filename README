@@ -15,8 +15,10 @@ each part of the system:
   Sensors     temperatures, fan speeds and voltages
   Power       battery state and power use
 
-This is an early version: so far only the Overview page shows
-measurements.
+This is an early version: so far the Overview and GPU pages show
+measurements.  The GPU page shows NVIDIA graphics processors, using
+the monitoring library that comes with the NVIDIA driver when it is
+installed.
 
 Dials reads its measurements from /proc and /sys.  It needs a C
 compiler, pkg-config and the wide-character curses library (ncursesw)

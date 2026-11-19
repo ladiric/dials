@@ -47,6 +47,17 @@ fmt_compact (char *buf, size_t size, double v)
 }
 
 void
+fmt_axis_mib (char *buf, size_t size, double mib)
+{
+  if (mib >= 10 * 1024)
+    snprintf (buf, size, "%.0fG", mib / 1024);
+  else if (mib >= 1024)
+    snprintf (buf, size, "%.1fG", mib / 1024);
+  else
+    snprintf (buf, size, "%.0fM", mib);
+}
+
+void
 widget_meter (struct canvas *cv, int y, int x, int w, const char *label,
               int label_w, double frac, const char *text, int text_w)
 {
@@ -84,7 +95,8 @@ widget_meter (struct canvas *cv, int y, int x, int w, const char *label,
 
 void
 widget_graph (struct canvas *cv, struct rect r, const struct metric *m,
-              double scale, double cbase)
+              double scale, double cbase,
+              void (*axis) (char *, size_t, double))
 {
   enum { LAB = 5 };		/* Axis labels and the axis line.  */
   char buf[16];
@@ -93,13 +105,15 @@ widget_graph (struct canvas *cv, struct rect r, const struct metric *m,
     return;
   if (!(scale > 0))
     scale = 100;
+  if (!axis)
+    axis = fmt_compact;
   int pw = r.w - LAB;
 
-  fmt_compact (buf, sizeof buf, scale);
+  axis (buf, sizeof buf, scale);
   canvas_put_right (cv, r.y, r.x, LAB - 1, buf, ST_LABEL);
   if (r.h > 2)
     {
-      fmt_compact (buf, sizeof buf, scale / 2);
+      axis (buf, sizeof buf, scale / 2);
       canvas_put_right (cv, r.y + r.h / 2, r.x, LAB - 1, buf, ST_LABEL);
       /* A faint middle line, so that an empty graph still reads as one.  */
       canvas_repeat (cv, r.y + r.h / 2, r.x + LAB, pw, L'·', ST_DIM);
@@ -137,14 +151,14 @@ widget_graph (struct canvas *cv, struct rect r, const struct metric *m,
 void
 widget_graph_box (struct canvas *cv, struct rect r, const char *title,
                   const struct metric *m, double scale, double cbase,
-                  double interval)
+                  void (*axis) (char *, size_t, double), double interval)
 {
   if (r.h < 3 || r.w < 12)
     return;
   canvas_box (cv, r, ST_FRAME, false);
   canvas_title (cv, r.y, r.x, r.w, title, ST_TITLE);
   struct rect in = { r.y + 1, r.x + 1, r.h - 2, r.w - 2 };
-  widget_graph (cv, in, m, scale, cbase);
+  widget_graph (cv, in, m, scale, cbase, axis);
 
   char span[32], lab[40];
   fmt_duration (span, sizeof span, (r.w - 2 - 5) * interval);
@@ -154,6 +168,125 @@ widget_graph_box (struct canvas *cv, struct rect r, const char *title,
   char now[32];
   snprintf (now, sizeof now, " %s ", _("now"));
   canvas_put_right (cv, bottom, r.x + r.w / 2, r.w / 2 - 2, now, ST_LABEL);
+}
+
+void
+widget_stat_block (struct canvas *cv, struct rect r, const char *title,
+                   const char *value, double frac, int st,
+                   const struct metric *m, void (*fmt) (char *, size_t, double))
+{
+  enum { PCT_W = 5 };
+
+  if (r.h < 4 || r.w < 12)
+    return;
+  canvas_box (cv, r, ST_FRAME, false);
+  canvas_title (cv, r.y, r.x, r.w, title, ST_TITLE);
+  int x = r.x + 1, w = r.w - 2;
+
+  canvas_put_center (cv, r.y + 1, x, w, value, st);
+
+  int bw = w - 2 - PCT_W;
+  if (isnan (frac))
+    canvas_put_center (cv, r.y + 2, x, w, _("n/a"), ST_DIM);
+  else if (bw >= 3)
+    {
+      if (frac < 0)
+        frac = 0;
+      if (frac > 1)
+        frac = 1;
+      int filled = (int) (frac * bw + 0.5);
+      canvas_repeat (cv, r.y + 2, x + 1, filled, L'█', st);
+      canvas_repeat (cv, r.y + 2, x + 1 + filled, bw - filled, L'░', ST_DIM);
+      char pct[16];
+      snprintf (pct, sizeof pct, " %3.0f%%", frac * 100);
+      canvas_put (cv, r.y + 2, x + 1 + bw, PCT_W, pct, ST_VALUE);
+    }
+
+  double lo, avg, hi;
+  if (r.h >= 5 && metric_stats (m, &lo, &avg, &hi))
+    {
+      char a1[32], a2[32], a3[32], line[160];
+      fmt (a1, sizeof a1, lo);
+      fmt (a2, sizeof a2, avg);
+      fmt (a3, sizeof a3, hi);
+      snprintf (line, sizeof line, _("min %s  avg %s  max %s"), a1, a2, a3);
+      if (text_width (line) > w - 2)
+        snprintf (line, sizeof line, _("min %s  max %s"), a1, a3);
+      if (text_width (line) > w - 2)
+        snprintf (line, sizeof line, _("max %s"), a3);
+      canvas_put_center (cv, r.y + 3, x, w, line, ST_LABEL);
+    }
+}
+
+void
+table_layout (const struct table_col *cols, int n, int w, int *widths)
+{
+  enum { FLEX_MIN = 8 };
+  int maxdrop = 0;
+
+  for (int i = 0; i < n; i++)
+    if (cols[i].drop > maxdrop)
+      maxdrop = cols[i].drop;
+
+  /* Columns whose drop number is at least LEVEL are hidden.  Lower the
+     level until the shown columns fit.  */
+  for (int level = maxdrop + 1;; level--)
+    {
+      int used = 0, nflex = 0, shown = 0;
+      for (int i = 0; i < n; i++)
+        {
+          if (cols[i].drop && cols[i].drop >= level)
+            continue;
+          shown++;
+          if (cols[i].width)
+            used += cols[i].width;
+          else
+            nflex++;
+        }
+      int space = w - used - (shown > 0 ? shown - 1 : 0);
+      bool fits = nflex ? space >= nflex * FLEX_MIN : space >= 0;
+      if (fits || level <= 1)
+        {
+          int flex_left = nflex;
+          for (int i = 0; i < n; i++)
+            {
+              if (cols[i].drop && cols[i].drop >= level)
+                widths[i] = 0;
+              else if (cols[i].width)
+                widths[i] = cols[i].width;
+              else
+                {
+                  int fw = space / flex_left;
+                  widths[i] = fw > 0 ? fw : 0;
+                  space -= fw;
+                  flex_left--;
+                }
+            }
+          return;
+        }
+    }
+}
+
+void
+table_row (struct canvas *cv, int y, int x, int w,
+           const struct table_col *cols, int n, const int *widths,
+           const char *const *cells, const int *styles, int row_st)
+{
+  int end = x + w, cx = x;
+
+  canvas_fill (cv, (struct rect) { y, x, 1, w }, row_st);
+  for (int i = 0; i < n && cx < end; i++)
+    {
+      if (widths[i] == 0)
+        continue;
+      int cw = widths[i] < end - cx ? widths[i] : end - cx;
+      int st = styles && styles[i] >= 0 ? styles[i] : row_st;
+      if (cols[i].right)
+        canvas_put_right (cv, y, cx, cw, cells[i], st);
+      else
+        canvas_put (cv, y, cx, cw, cells[i], st);
+      cx += widths[i] + 1;
+    }
 }
 
 void

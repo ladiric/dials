@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <error.h>
 #include <fcntl.h>
+#include <langinfo.h>
 #include <locale.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -177,6 +178,7 @@ fmt_mib (char *buf, size_t size, double mib)
     snprintf (buf, size, "%.0f MiB", mib);
 }
 
+/* "1.4 / 6.0 GiB" when both are in GiB, else "512 MiB / 6.0 GiB".  */
 void
 fmt_used_total (char *buf, size_t size, double used, double total)
 {
@@ -186,7 +188,58 @@ fmt_used_total (char *buf, size_t size, double used, double total)
       snprintf (buf, size, "%s", _("n/a"));
       return;
     }
+  if (used >= 1024 && total >= 1024)
+    {
+      snprintf (buf, size, "%.1f / %.1f GiB", used / 1024, total / 1024);
+      return;
+    }
   fmt_mib (u, sizeof u, used);
   fmt_mib (t, sizeof t, total);
   snprintf (buf, size, "%s / %s", u, t);
+}
+
+bool
+utf8_locale (void)
+{
+  return strcmp (nl_langinfo (CODESET), "UTF-8") == 0;
+}
+
+void
+fmt_temp (char *buf, size_t size, double celsius)
+{
+  if (isnan (celsius))
+    snprintf (buf, size, "%s", _("n/a"));
+  else
+    snprintf (buf, size, "%.0f%s", celsius, utf8_locale () ? "°C" : "C");
+}
+
+void
+fmt_pct (char *buf, size_t size, double pct)
+{
+  if (isnan (pct))
+    snprintf (buf, size, "%s", _("n/a"));
+  else
+    snprintf (buf, size, "%.0f%%", pct);
+}
+
+void
+fmt_watts (char *buf, size_t size, double watts)
+{
+  if (isnan (watts))
+    snprintf (buf, size, "%s", _("n/a"));
+  else
+    snprintf (buf, size, "%.0f W", watts);
+}
+
+/* "17 / 125 W", or "17 W" when there is no limit.  */
+void
+fmt_of_limit (char *buf, size_t size, double v, double limit,
+              const char *unit)
+{
+  if (isnan (v))
+    snprintf (buf, size, "%s", _("n/a"));
+  else if (isnan (limit))
+    snprintf (buf, size, "%.0f %s", v, unit);
+  else
+    snprintf (buf, size, "%.0f / %.0f %s", v, limit, unit);
 }

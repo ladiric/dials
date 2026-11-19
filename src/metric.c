@@ -65,3 +65,29 @@ metric_last (const struct metric *m)
 {
   return m->len ? metric_at (m, m->len - 1) : NAN;
 }
+
+bool
+metric_stats (const struct metric *m, double *min, double *avg, double *max)
+{
+  double lo = INFINITY, hi = -INFINITY, sum = 0;
+  size_t n = 0;
+
+  for (size_t i = 0; i < m->len; i++)
+    {
+      double v = metric_at (m, i);
+      if (isnan (v))
+        continue;
+      if (v < lo)
+        lo = v;
+      if (v > hi)
+        hi = v;
+      sum += v;
+      n++;
+    }
+  if (n == 0)
+    return false;
+  *min = lo;
+  *avg = sum / n;
+  *max = hi;
+  return true;
+}

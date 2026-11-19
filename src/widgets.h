@@ -28,6 +28,9 @@ int level_style (double frac);
 /* Format V in at most four characters, such as "980" or "31k".  */
 void fmt_compact (char *buf, size_t size, double v);
 
+/* Format a size in MiB in at most four characters: "512M", "6.0G".  */
+void fmt_axis_mib (char *buf, size_t size, double mib);
+
 /* Draw "LABEL ████░░░░  54%  TEXT" on row Y.  LABEL_W and TEXT_W
    reserve columns so that several meters line up.  FRAC is NaN when
    unknown; TEXT may be NULL.  */
@@ -37,15 +40,45 @@ void widget_meter (struct canvas *cv, int y, int x, int w,
 
 /* Draw the history in M as a bar graph inside R, newest sample on the
    right.  SCALE is the top of the graph; colors follow the fraction
-   of CBASE.  */
+   of CBASE.  AXIS formats the axis labels; NULL means fmt_compact.  */
 void widget_graph (struct canvas *cv, struct rect r, const struct metric *m,
-                   double scale, double cbase);
+                   double scale, double cbase,
+                   void (*axis) (char *, size_t, double));
 
 /* The same inside a single-line frame with TITLE, labeled with the
    time span covered when sampling every INTERVAL seconds.  */
 void widget_graph_box (struct canvas *cv, struct rect r, const char *title,
                        const struct metric *m, double scale, double cbase,
+                       void (*axis) (char *, size_t, double),
                        double interval);
+
+/* Draw a framed block: TITLE on the frame, VALUE in style ST, a bar
+   for FRAC, and the lowest, mean and highest samples of M formatted
+   by FMT.  R should be 5 rows high.  */
+void widget_stat_block (struct canvas *cv, struct rect r, const char *title,
+                        const char *value, double frac, int st,
+                        const struct metric *m,
+                        void (*fmt) (char *, size_t, double));
+
+/* A table column.  */
+struct table_col
+{
+  const char *title;		/* Already translated.  */
+  int width;			/* 0: share the remaining space.  */
+  bool right;			/* Right-align the cells.  */
+  int drop;			/* 0: always shown; when space is short,
+                                   higher numbers are hidden first.  */
+};
+
+/* Store in WIDTHS the width of each of the N columns of a table W
+   columns wide; hidden columns get 0.  */
+void table_layout (const struct table_col *cols, int n, int w, int *widths);
+
+/* Draw one row of N CELLS at Y, X, W wide, in style ROW_ST.  STYLES,
+   if not NULL, gives a style per cell, or -1 for ROW_ST.  */
+void table_row (struct canvas *cv, int y, int x, int w,
+                const struct table_col *cols, int n, const int *widths,
+                const char *const *cells, const int *styles, int row_st);
 
 /* Draw a centered dialog box with N LINES of text.  */
 void widget_dialog (struct canvas *cv, const char *title,

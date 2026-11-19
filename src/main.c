@@ -30,6 +30,7 @@
 
 #include "app.h"
 #include "canvas.h"
+#include "gpu.h"
 #include "pages.h"
 #include "source.h"
 #include "theme.h"
@@ -134,16 +135,19 @@ print_line (const char *label, int width, const char *value)
 /* Print a plain-text report, for scripts and for terminals that cannot
    run the full-screen interface.  */
 static void
-report (struct source *src)
+report (struct source *src, bool demo)
 {
+  static struct gpus gpus;
   struct sys_info in;
   struct sys_sample s;
   struct timespec pause = { 0, 250000000 };
   char kernel[200], up[64], load[64], cpu[32], mem[96], swap[96], used[64];
 
   source_info (src, &in);
+  gpus_open (&gpus, demo, 1);
   nanosleep (&pause, NULL);	/* CPU use needs two readings.  */
   source_sample (src, &s);
+  gpus_sample (&gpus, false);
 
   snprintf (kernel, sizeof kernel, "%s %s", in.kernel, in.arch);
   fmt_uptime (up, sizeof up, s.uptime);
@@ -171,22 +175,48 @@ report (struct source *src)
   else
     snprintf (swap, sizeof swap, "%s", _("no swap"));
 
-  const char *labels[] = {
+  enum { BASE = 9 };
+  const char *labels[BASE + GPU_MAX] = {
     _("Host"), _("System"), _("Kernel"), _("Processor"), _("Uptime"),
     _("Load"), _("CPU"), _("Memory"), _("Swap")
   };
-  const char *values[] = {
+  const char *values[BASE + GPU_MAX] = {
     in.host, in.os, kernel, in.cpu_model, up, load, cpu, mem, swap
   };
+  int n = BASE;
+
+  /* One line per GPU, or why there is none.  */
+  char glabel[GPU_MAX][32], gvalue[GPU_MAX][256];
+  for (int i = 0; i < gpus.count; i++)
+    {
+      const struct gpu_sample *gs = &gpus.dev[i].cur;
+      char temp[32], util[16], vram[64], power[48];
+      fmt_temp (temp, sizeof temp, gs->temp);
+      fmt_pct (util, sizeof util, gs->util);
+      fmt_used_total (vram, sizeof vram, gs->mem_used, gs->mem_total);
+      fmt_of_limit (power, sizeof power, gs->power, gs->power_limit, "W");
+      snprintf (glabel[i], sizeof glabel[i], _("GPU %d"), i);
+      snprintf (gvalue[i], sizeof gvalue[i], "%s, %s, %s, %s, %s",
+                gpus.dev[i].name, temp, util, vram, power);
+      labels[n] = glabel[i];
+      values[n++] = gvalue[i];
+    }
+  if (gpus.count == 0)
+    {
+      labels[n] = _("GPU");
+      values[n++] = gpus.error;
+    }
+
   int width = 0;
-  for (size_t i = 0; i < ARRAY_CARDINALITY (labels); i++)
+  for (int i = 0; i < n; i++)
     {
       int w = text_width (labels[i]);
       if (w > width)
         width = w;
     }
-  for (size_t i = 0; i < ARRAY_CARDINALITY (labels); i++)
+  for (int i = 0; i < n; i++)
     print_line (labels[i], width, values[i]);
+  gpus_close (&gpus);
 }
 
 int
@@ -252,7 +282,7 @@ main (int argc, char **argv)
 
   if (once)
     {
-      report (src);
+      report (src, demo);
       source_free (src);
       return EXIT_SUCCESS;
     }

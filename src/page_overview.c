@@ -112,15 +112,35 @@ page_overview_draw (struct app *a, struct canvas *cv, struct rect r)
     fmt_used_total (swap, sizeof swap, s->swap_used, s->swap_total);
   else
     snprintf (swap, sizeof swap, "%s", _("no swap"));
-  const char *ml[3] = { _("CPU"), _("Memory"), _("Swap") };
-  const char *mt[2] = { mem, swap };
-  int mlw = max_width (ml, 3), mtw = max_width (mt, 2);
+  /* One meter per GPU, up to two, showing its utilization and video
+     memory.  */
+  enum { GPU_METERS = 2 };
+  int ngpu = a->gpus.count < GPU_METERS ? a->gpus.count : GPU_METERS;
+  char glabel[GPU_METERS][32], gtext[GPU_METERS][64];
+  for (int i = 0; i < ngpu; i++)
+    {
+      const struct gpu_sample *gs = &a->gpus.dev[i].cur;
+      snprintf (glabel[i], sizeof glabel[i], _("GPU %d"), i);
+      fmt_used_total (gtext[i], sizeof gtext[i], gs->mem_used, gs->mem_total);
+    }
+
+  const char *ml[3 + GPU_METERS] = { _("CPU"), _("Memory"), _("Swap") };
+  const char *mt[2 + GPU_METERS] = { mem, swap };
+  for (int i = 0; i < ngpu; i++)
+    {
+      ml[3 + i] = glabel[i];
+      mt[2 + i] = gtext[i];
+    }
+  int mlw = max_width (ml, 3 + ngpu), mtw = max_width (mt, 2 + ngpu);
   widget_meter (cv, y, x, w, ml[0], mlw, s->cpu_pct / 100, NULL, mtw);
   widget_meter (cv, y + 1, x, w, ml[1], mlw,
                 fraction (s->mem_used, s->mem_total), mem, mtw);
   widget_meter (cv, y + 2, x, w, ml[2], mlw,
                 fraction (s->swap_used, s->swap_total), swap, mtw);
   y += 3;
+  for (int i = 0; i < ngpu; i++, y++)
+    widget_meter (cv, y, x, w, glabel[i], mlw,
+                  a->gpus.dev[i].cur.util / 100, gtext[i], mtw);
 
   /* History graphs side by side.  */
   if (bottom - y >= 5)
@@ -130,7 +150,7 @@ page_overview_draw (struct app *a, struct canvas *cv, struct rect r)
       char t1[64], t2[64];
       title_with_pct (t1, sizeof t1, _("CPU"), metric_last (&a->m_cpu));
       title_with_pct (t2, sizeof t2, _("Memory"), metric_last (&a->m_mem));
-      widget_graph_box (cv, g1, t1, &a->m_cpu, 100, 100, a->interval);
-      widget_graph_box (cv, g2, t2, &a->m_mem, 100, 100, a->interval);
+      widget_graph_box (cv, g1, t1, &a->m_cpu, 100, 100, NULL, a->interval);
+      widget_graph_box (cv, g2, t2, &a->m_mem, 100, 100, NULL, a->interval);
     }
 }

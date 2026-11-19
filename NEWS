@@ -11,6 +11,12 @@ Dials NEWS                                    -*- outline -*-
   The Overview page shows the host and system, uptime, load, and the
   use of the processors, memory and swap with their recent history.
 
+  The GPU page lists NVIDIA graphics processors with their
+  temperature, utilization, video memory, power, clocks and fan speed,
+  graphs of their history, and the processes using them.  Dials reads
+  them through the NVIDIA driver's NVML library, loaded at run time,
+  so it builds and runs on systems without it.
+
   The --demo option shows simulated data, and --once prints a
   plain-text report instead of starting the full-screen interface.
 

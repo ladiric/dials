@@ -46,6 +46,10 @@ CPPFLAGS=$dials_save_CPPFLAGS
 AC_CHECK_HEADERS([sys/timerfd.h], [],
   [AC_MSG_ERROR([sys/timerfd.h is missing; Dials currently supports GNU/Linux only])])
 
+# NVIDIA's monitoring library is loaded at run time when present.
+AC_SEARCH_LIBS([dlopen], [dl], [],
+  [AC_MSG_ERROR([dlopen is required])])
+
 # Used to generate the manual page from --help.
 AM_MISSING_PROG([HELP2MAN], [help2man])
 

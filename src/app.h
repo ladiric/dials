@@ -23,6 +23,7 @@
 #include <stddef.h>
 
 #include "canvas.h"
+#include "gpu.h"
 #include "metric.h"
 #include "source.h"
 
@@ -41,6 +42,8 @@ struct app
   struct sys_info info;
   struct sys_sample cur;
   struct metric m_cpu, m_mem, m_swap;	/* Percentages.  */
+  struct gpus gpus;
+  size_t gpu_sel;		/* GPU shown in detail on the GPU page.  */
   double interval;		/* Seconds between samples.  */
   bool paused, quit, dirty, demo;
   size_t page;			/* Index into pages[].  */

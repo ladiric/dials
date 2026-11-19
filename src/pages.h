@@ -19,6 +19,7 @@
 #ifndef DIALS_PAGES_H
 #define DIALS_PAGES_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "canvas.h"
@@ -33,6 +34,9 @@ struct page
   const char *title;		/* Untranslated; use _().  */
   void (*draw) (struct app *a, struct canvas *cv, struct rect r);
   const char *const *planned;	/* Untranslated, NULL-terminated.  */
+  /* Handle key CH if it means something on this page; return whether
+     it did.  May be NULL.  */
+  bool (*key) (struct app *a, int ch);
 };
 
 extern const struct page pages[];
@@ -44,5 +48,7 @@ int page_find (const char *id);
 void page_overview_draw (struct app *a, struct canvas *cv, struct rect r);
 void page_placeholder_draw (struct app *a, struct canvas *cv,
                             struct rect r);
+void page_gpu_draw (struct app *a, struct canvas *cv, struct rect r);
+bool page_gpu_key (struct app *a, int ch);
 
 #endif /* DIALS_PAGES_H */

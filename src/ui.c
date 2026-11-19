@@ -307,6 +307,7 @@ draw_help (struct app *a)
     { "F9", N_("Open the menu bar") },
     { "F10  q", N_("Quit") },
     { "1-9  Alt-1..9", N_("Go to a page") },
+    { "Up  Down", N_("Choose a GPU on the GPU page") },
     { "Ctrl-PgUp/PgDn", N_("Previous or next page") },
     { "t", N_("Next color theme") },
   };

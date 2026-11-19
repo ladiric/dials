@@ -1,6 +1,9 @@
 # Source files that contain translatable strings.
 src/app.c
+src/gpu.c
+src/gpu_nvml.c
 src/main.c
+src/page_gpu.c
 src/page_overview.c
 src/page_placeholder.c
 src/pages.c

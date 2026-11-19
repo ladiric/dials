@@ -51,6 +51,7 @@ This manual is for Dials (version @value{VERSION}, @value{UPDATED}).
 * Overview::            What Dials does.
 * Invoking dials::      Command-line options.
 * The screen::          Menu bar, pages and function keys.
+* Pages::               What each page shows.
 * Keys::                Keyboard commands.
 * Reporting bugs::      Sending bug reports.
 * GNU Free Documentation License::  Copying this manual.
@@ -71,8 +72,8 @@ Dials reads its measurements from @file{/proc} and @file{/sys}.  It
 keeps the files it reads open and rereads them in place, so it uses
 very little of the processor time it measures.
 
-This version is an early skeleton.  The Overview page works; the
-other pages describe what they will show.
+This is an early version.  The Overview and GPU pages show
+measurements; the other pages describe what they will show.
 
 @node Invoking dials
 @chapter Invoking @command{dials}
@@ -139,6 +140,54 @@ with the newest sample on the right; the label on the bottom of a
 graph tells how much time it spans.  Bars and graphs are green below
 60% of their limit, yellow below 85% and red above.
 
+@node Pages
+@chapter Pages
+@cindex pages
+
+@menu
+* Overview page::       The whole system at a glance.
+* GPU page::            Graphics processors.
+@end menu
+
+@node Overview page
+@section The Overview page
+@cindex Overview page
+
+The top of the page names the host, the operating system, the kernel
+and the processor, with the uptime, the load averages, the number of
+processors and the sampling interval.
+
+Below are meters for processor, memory and swap use, and for the
+utilization and video memory of up to two graphics processors.  At
+the bottom, graphs show the recent history of processor and memory
+use.
+
+@node GPU page
+@section The GPU page
+@cindex GPU page
+@cindex graphics processors
+@cindex NVIDIA
+
+The GPU page shows NVIDIA graphics processors.  It reads them through
+NVML, the monitoring library that comes with the NVIDIA driver; Dials
+loads the library when it starts, if it is installed, and the page
+says why when there is nothing to show.
+
+The list at the top has one line per GPU, with its temperature,
+utilization, video memory, power, fan speed and a status.  The status
+warns when a GPU reaches 85@tie{}@textdegree{}C or uses 95% of its
+video memory.  Choose a GPU with @key{UP} and @key{DOWN}.
+
+Below the list are the details of the chosen GPU: the driver version,
+the performance state, the processor and memory clocks, the fan
+speed and the use of the video encoder and decoder.  Then come blocks
+with the current temperature, utilization, video memory and power,
+each with the lowest, mean and highest value seen, graphs of their
+history, and the processes using the GPU with their share of its time
+and of its memory.
+
+On a small screen the blocks are left out first, then the processes.
+
 @node Keys
 @chapter Keys
 @cindex keys
@@ -170,6 +219,9 @@ Quit.
 @item 1 @dots{} 9
 @itemx M-1 @dots{} M-9
 Go to a page.
+@item @key{UP}
+@itemx @key{DOWN}
+Choose a GPU on the GPU page.
 @item C-@key{PgUp}
 @itemx C-@key{PgDn}
 Go to the previous or next page.

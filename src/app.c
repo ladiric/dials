@@ -67,6 +67,7 @@ app_init (struct app *a, struct source *src, double interval, size_t page,
   metric_init (&a->m_cpu, HISTORY);
   metric_init (&a->m_mem, HISTORY);
   metric_init (&a->m_swap, HISTORY);
+  gpus_open (&a->gpus, demo, HISTORY);
 }
 
 void
@@ -78,6 +79,7 @@ app_fini (struct app *a)
   metric_free (&a->m_cpu);
   metric_free (&a->m_mem);
   metric_free (&a->m_swap);
+  gpus_close (&a->gpus);
 }
 
 static double
@@ -94,6 +96,9 @@ app_sample (struct app *a)
   metric_push (&a->m_cpu, s->cpu_pct);
   metric_push (&a->m_mem, percent (s->mem_used, s->mem_total));
   metric_push (&a->m_swap, percent (s->swap_used, s->swap_total));
+  /* Listing the processes on each GPU costs more, so do it only while
+     they are shown.  */
+  gpus_sample (&a->gpus, pages[a->page].draw == page_gpu_draw);
   a->dirty = true;
 }
 
@@ -172,6 +177,7 @@ app_reset_history (struct app *a)
   metric_clear (&a->m_cpu);
   metric_clear (&a->m_mem);
   metric_clear (&a->m_swap);
+  gpus_clear_history (&a->gpus);
   a->dirty = true;
 }
 
@@ -244,6 +250,8 @@ handle_key (struct app *a, int ch)
       break;
     }
 
+  if (pages[a->page].key && pages[a->page].key (a, ch))
+    return;
   if (key_ctrl_pgdn > 0 && ch == key_ctrl_pgdn)
     {
       app_set_page (a, (a->page + 1) % page_count);
