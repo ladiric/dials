@@ -72,8 +72,9 @@ Dials reads its measurements from @file{/proc} and @file{/sys}.  It
 keeps the files it reads open and rereads them in place, so it uses
 very little of the processor time it measures.
 
-This is an early version.  The Overview and GPU pages show
-measurements; the other pages describe what they will show.
+This is an early version.  The Overview, CPU, Memory, GPU and Disks
+pages show measurements; the other pages describe what they will
+show.
 
 @node Invoking dials
 @chapter Invoking @command{dials}
@@ -116,6 +117,13 @@ default), @samp{blue} (white on the terminal's blue), @samp{dark} or
 Print one plain-text report on standard output and exit, without
 starting the full-screen interface.
 
+@item --sysroot=@var{dir}
+@opindex --sysroot
+Read @file{/proc} and @file{/sys} under @var{dir} instead of the
+running system's.  This is meant for testing with a saved copy of
+those files.  File system space and GPUs are not measured then, since
+they do not come from those files.
+
 @item --help
 @opindex --help
 Print a summary of the options and exit.
@@ -146,7 +154,10 @@ graph tells how much time it spans.  Bars and graphs are green below
 
 @menu
 * Overview page::       The whole system at a glance.
+* CPU page::            Processors.
+* Memory page::         Memory and swap.
 * GPU page::            Graphics processors.
+* Disks page::          Disks and file systems.
 @end menu
 
 @node Overview page
@@ -161,6 +172,56 @@ Below are meters for processor, memory and swap use, and for the
 utilization and video memory of up to two graphics processors.  At
 the bottom, graphs show the recent history of processor and memory
 use.
+
+@node CPU page
+@section The CPU page
+@cindex CPU page
+@cindex processors
+
+The top of the CPU page names the processor and gives the number of
+logical processors, their mean and highest current frequency, the
+highest frequency the hardware allows, and the package temperature.
+Below are the load averages, the share of time that tasks waited for
+a processor in the last ten seconds, the number of tasks running and
+blocked, and the rates of context switches, interrupts and new
+processes.
+
+A bar shows how the processors' time was used: by programs
+(@samp{user} and @samp{nice}), by the kernel (@samp{system} and
+@samp{IRQ}), waiting for input and output, and taken by a hypervisor
+(@samp{steal}).
+
+Then comes one cell per processor, with its use and, when there is
+room, a bar and its frequency.  On machines with many processors the
+cells get smaller to fit the screen.  At the bottom, graphs show the
+history of the total use and of the temperature, or of the frequency
+where the temperature is not known.
+
+The temperature comes from the first of these hardware monitoring
+drivers found: @code{coretemp}, @code{k10temp}, @code{zenpower},
+@code{cpu_thermal}, @code{soc_thermal} and @code{acpitz}.
+
+@node Memory page
+@section The Memory page
+@cindex Memory page
+@cindex swap
+@cindex zram
+
+The first bar divides memory between programs, the kernel, buffers,
+the page cache and free memory; the second shows how much swap is
+used.  The figure at the end of the first bar is the memory in use:
+the total less what is available, as the kernel estimates it.
+
+Below are the details: shared memory, the parts of the kernel's own
+use, the swap cache, the data stored in zram devices and the memory
+it takes compressed, dirty pages and those being written back, the
+memory committed to programs against the kernel's limit, and huge
+pages.  On a wide screen a third column gives the rates of page
+faults and of swapping, and the share of time that tasks were delayed
+(@samp{Waiting}) or all stopped (@samp{Stalled}) for lack of memory.
+
+Graphs show the history of memory and swap use, and a table lists the
+ten processes with the most memory.
 
 @node GPU page
 @section The GPU page
@@ -187,6 +248,27 @@ history, and the processes using the GPU with their share of its time
 and of its memory.
 
 On a small screen the blocks are left out first, then the processes.
+
+@node Disks page
+@section The Disks page
+@cindex Disks page
+@cindex file systems
+
+The list at the top has one line per disk, with its model, size, read
+and write throughput, the share of time it was busy, the mean time an
+operation took, and its temperature when the drive reports one.
+Loop, RAM and zram devices are not listed, nor are disks attached
+after Dials started.  Choose a disk with @key{UP} and @key{DOWN}.
+
+Below the list are the details of the chosen disk and graphs of its
+reads, writes and busy time.  The throughput graphs scale to the
+highest rate seen, so that small transfers still show.
+
+The table at the bottom lists the file systems on local disks with
+their size, the space used and free, and a bar of their use.  A device
+mounted in several places, as Btrfs subvolumes often are, is listed
+once.  Network file systems are left out, because measuring one that
+does not answer would stop the program.
 
 @node Keys
 @chapter Keys
@@ -221,7 +303,7 @@ Quit.
 Go to a page.
 @item @key{UP}
 @itemx @key{DOWN}
-Choose a GPU on the GPU page.
+Choose a disk on the Disks page, or a GPU on the GPU page.
 @item C-@key{PgUp}
 @itemx C-@key{PgDn}
 Go to the previous or next page.

@@ -64,9 +64,9 @@ app_init (struct app *a, struct source *src, double interval, size_t page,
   a->timer_fd = -1;
   source_info (src, &a->info);
   sys_sample_clear (&a->cur);
-  metric_init (&a->m_cpu, HISTORY);
-  metric_init (&a->m_mem, HISTORY);
-  metric_init (&a->m_swap, HISTORY);
+  cpu_open (&a->cpu, demo, HISTORY);
+  memory_open (&a->mem, demo, HISTORY);
+  disks_open (&a->disks, demo, HISTORY);
   gpus_open (&a->gpus, demo, HISTORY);
 }
 
@@ -76,29 +76,24 @@ app_fini (struct app *a)
   if (a->timer_fd >= 0)
     close (a->timer_fd);
   canvas_free (&a->cv);
-  metric_free (&a->m_cpu);
-  metric_free (&a->m_mem);
-  metric_free (&a->m_swap);
+  cpu_close (&a->cpu);
+  memory_close (&a->mem);
+  disks_close (&a->disks);
   gpus_close (&a->gpus);
-}
-
-static double
-percent (double part, double whole)
-{
-  return whole > 0 ? 100 * part / whole : NAN;
 }
 
 void
 app_sample (struct app *a)
 {
-  const struct sys_sample *s = &a->cur;
+  void (*shown) (struct app *, struct canvas *, struct rect)
+    = pages[a->page].draw;
   source_sample (a->src, &a->cur);
-  metric_push (&a->m_cpu, s->cpu_pct);
-  metric_push (&a->m_mem, percent (s->mem_used, s->mem_total));
-  metric_push (&a->m_swap, percent (s->swap_used, s->swap_total));
-  /* Listing the processes on each GPU costs more, so do it only while
-     they are shown.  */
-  gpus_sample (&a->gpus, pages[a->page].draw == page_gpu_draw);
+  cpu_sample (&a->cpu);
+  /* Scanning processes and file systems costs more, so it is done only
+     while they are shown.  */
+  memory_sample (&a->mem, shown == page_memory_draw);
+  disks_sample (&a->disks, shown == page_disk_draw);
+  gpus_sample (&a->gpus, shown == page_gpu_draw);
   a->dirty = true;
 }
 
@@ -174,9 +169,9 @@ app_toggle_pause (struct app *a)
 void
 app_reset_history (struct app *a)
 {
-  metric_clear (&a->m_cpu);
-  metric_clear (&a->m_mem);
-  metric_clear (&a->m_swap);
+  cpu_clear_history (&a->cpu);
+  memory_clear_history (&a->mem);
+  disks_clear_history (&a->disks);
   gpus_clear_history (&a->gpus);
   a->dirty = true;
 }

@@ -24,6 +24,7 @@
 #include <langinfo.h>
 #include <locale.h>
 #include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "util.h"
@@ -98,20 +99,103 @@ open_ro (const char *path)
   return open (path, O_RDONLY | O_CLOEXEC);
 }
 
+static const char *sysroot = "";
+
+void
+set_sysroot (const char *dir)
+{
+  sysroot = dir;
+}
+
+bool
+sysroot_set (void)
+{
+  return sysroot[0] != '\0';
+}
+
+void
+sys_path (char *buf, size_t size, const char *path)
+{
+  snprintf (buf, size, "%s%s", sysroot, path);
+}
+
+int
+sys_open (const char *path)
+{
+  char full[4096];
+  sys_path (full, sizeof full, path);
+  return open_ro (full);
+}
+
+bool
+sys_read (const char *path, char *buf, size_t size)
+{
+  char full[4096];
+  sys_path (full, sizeof full, path);
+  return read_file (full, buf, size);
+}
+
+bool
+sys_number (const char *path, double *out)
+{
+  char buf[64], *end;
+  if (!sys_read (path, buf, sizeof buf))
+    return false;
+  double v = c_strtod (buf, &end);
+  if (end == buf)
+    return false;
+  *out = v;
+  return true;
+}
+
+double
+psi_avg10 (const char *buf, const char *kind)
+{
+  size_t len = strlen (kind);
+  for (const char *line = buf; line && *line;)
+    {
+      if (strncmp (line, kind, len) == 0 && line[len] == ' ')
+        {
+          const char *v = strstr (line, "avg10=");
+          return v ? c_strtod (v + 6, NULL) : NAN;
+        }
+      line = strchr (line, '\n');
+      if (line)
+        line++;
+    }
+  return NAN;
+}
+
+double
+now_mono (void)
+{
+  struct timespec ts;
+  clock_gettime (CLOCK_MONOTONIC, &ts);
+  return ts.tv_sec + ts.tv_nsec / 1e9;
+}
+
 ssize_t
 read_at0 (int fd, char *buf, size_t size)
 {
-  ssize_t n;
+  size_t got = 0;
 
   if (fd < 0 || size == 0)
     return -1;
-  do
-    n = pread (fd, buf, size - 1, 0);
-  while (n < 0 && errno == EINTR);
-  if (n < 0)
-    return -1;
-  buf[n] = '\0';
-  return n;
+  /* Kernel files can hand out their contents a page at a time, so read
+     until the end or until BUF is full.  */
+  while (got < size - 1)
+    {
+      ssize_t n = pread (fd, buf + got, size - 1 - got, got);
+      if (n < 0 && errno == EINTR)
+        continue;
+      if (n < 0)
+        return -1;
+      if (n == 0)
+        break;
+      got += n;
+    }
+  buf[got] = '\0';
+  return got;
 }
 
 bool
@@ -174,8 +258,74 @@ fmt_mib (char *buf, size_t size, double mib)
     snprintf (buf, size, "%s", _("n/a"));
   else if (mib >= 1024)
     snprintf (buf, size, "%.1f GiB", mib / 1024);
+  else if (mib > 0 && mib < 1)
+    snprintf (buf, size, "%.0f KiB", mib * 1024);
   else
     snprintf (buf, size, "%.0f MiB", mib);
+}
+
+/* Sizes of disks and file systems, in decimal units as their makers
+   use: "512 GB", "1.0 TB".  */
+void
+fmt_bytes (char *buf, size_t size, double bytes)
+{
+  static const char *const units[] = { "B", "kB", "MB", "GB", "TB", "PB" };
+  if (isnan (bytes))
+    {
+      snprintf (buf, size, "%s", _("n/a"));
+      return;
+    }
+  size_t u = 0;
+  while (bytes >= 1000 && u + 1 < ARRAY_CARDINALITY (units))
+    {
+      bytes /= 1000;
+      u++;
+    }
+  snprintf (buf, size, bytes < 10 && u > 0 ? "%.1f %s" : "%.0f %s",
+            bytes, units[u]);
+}
+
+void
+fmt_rate (char *buf, size_t size, double bps)
+{
+  if (isnan (bps))
+    snprintf (buf, size, "%s", _("n/a"));
+  else if (bps >= 1024.0 * 1024 * 1024)
+    snprintf (buf, size, "%.2f GiB/s", bps / (1024.0 * 1024 * 1024));
+  else if (bps >= 100.0 * 1024 * 1024)
+    snprintf (buf, size, "%.0f MiB/s", bps / (1024.0 * 1024));
+  else if (bps >= 1024.0 * 1024)
+    snprintf (buf, size, "%.1f MiB/s", bps / (1024.0 * 1024));
+  else if (bps >= 1024)
+    snprintf (buf, size, "%.0f KiB/s", bps / 1024);
+  else
+    snprintf (buf, size, "%.0f B/s", bps);
+}
+
+void
+fmt_count_rate (char *buf, size_t size, double per_second)
+{
+  if (isnan (per_second))
+    snprintf (buf, size, "%s", _("n/a"));
+  else if (per_second >= 1e6)
+    snprintf (buf, size, "%.1fM/s", per_second / 1e6);
+  else if (per_second >= 1e4)
+    snprintf (buf, size, "%.0fk/s", per_second / 1e3);
+  else if (per_second >= 1e3)
+    snprintf (buf, size, "%.1fk/s", per_second / 1e3);
+  else
+    snprintf (buf, size, "%.0f/s", per_second);
+}
+
+void
+fmt_mhz (char *buf, size_t size, double mhz)
+{
+  if (isnan (mhz))
+    snprintf (buf, size, "%s", _("n/a"));
+  else if (mhz >= 1000)
+    snprintf (buf, size, "%.2f GHz", mhz / 1000);
+  else
+    snprintf (buf, size, "%.0f MHz", mhz);
 }
 
 /* "1.4 / 6.0 GiB" when both are in GiB, else "512 MiB / 6.0 GiB".  */

@@ -21,6 +21,7 @@
 #include <stdio.h>
 
 #include "gpu.h"
+#include "util.h"
 
 void
 gpu_sample_clear (struct gpu_sample *s)
@@ -38,6 +39,12 @@ void
 gpus_open (struct gpus *g, bool demo, size_t history)
 {
   memset (g, 0, sizeof *g);
+  if (sysroot_set () && !demo)
+    {
+      snprintf (g->error, sizeof g->error, "%s",
+                _("GPUs are not read from a copy of /proc and /sys"));
+      return;
+    }
   const struct gpu_backend *be = demo ? &gpu_demo_backend : &gpu_nvml_backend;
   if (!be->open (&g->priv, g->driver, sizeof g->driver,
                  g->error, sizeof g->error))

@@ -53,8 +53,10 @@ fmt_axis_mib (char *buf, size_t size, double mib)
     snprintf (buf, size, "%.0fG", mib / 1024);
   else if (mib >= 1024)
     snprintf (buf, size, "%.1fG", mib / 1024);
-  else
+  else if (mib >= 1 || mib == 0)
     snprintf (buf, size, "%.0fM", mib);
+  else
+    snprintf (buf, size, "%.0fK", mib * 1024);
 }
 
 void
@@ -215,6 +217,72 @@ widget_stat_block (struct canvas *cv, struct rect r, const char *title,
       if (text_width (line) > w - 2)
         snprintf (line, sizeof line, _("max %s"), a3);
       canvas_put_center (cv, r.y + 3, x, w, line, ST_LABEL);
+    }
+}
+
+int
+widget_pair (struct canvas *cv, int y, int x, int end, const char *label,
+             const char *value)
+{
+  int need = text_width (label) + 1 + text_width (value);
+  if (x + need > end)
+    return x;
+  x += canvas_put (cv, y, x, -1, label, ST_LABEL) + 1;
+  x += canvas_put (cv, y, x, -1, value, ST_VALUE);
+  return x + 3;
+}
+
+int
+widget_legend (struct canvas *cv, int y, int x, int end, int st,
+               const char *label, const char *value)
+{
+  int need = 2 + text_width (label) + 1 + text_width (value);
+  if (x + need > end)
+    return x;
+  canvas_putwc (cv, y, x, L'█', st);
+  return widget_pair (cv, y, x + 2, end, label, value);
+}
+
+void
+widget_stacked_bar (struct canvas *cv, int y, int x, int w,
+                    const double *fracs, const int *styles, int n)
+{
+  double edge = 0;
+  int col = 0;
+  for (int i = 0; i < n; i++)
+    {
+      if (isnan (fracs[i]) || fracs[i] <= 0)
+        continue;
+      /* Round the running total, so that the parts add up to the
+         whole.  */
+      edge += fracs[i];
+      int to = (int) (edge * w + 0.5);
+      if (to > w)
+        to = w;
+      canvas_repeat (cv, y, x + col, to - col, L'█', styles[i]);
+      if (to > col)
+        col = to;
+    }
+  canvas_repeat (cv, y, x + col, w - col, L'░', ST_DIM);
+}
+
+void
+widget_values (struct canvas *cv, int y, int x, int w,
+               const char *const *labels, const char *const *values, int n)
+{
+  int lw = 0;
+  for (int i = 0; i < n; i++)
+    {
+      int t = text_width (labels[i]);
+      if (t > lw)
+        lw = t;
+    }
+  if (lw > w / 2)
+    lw = w / 2;
+  for (int i = 0; i < n; i++)
+    {
+      canvas_put (cv, y + i, x, lw, labels[i], ST_LABEL);
+      canvas_put (cv, y + i, x + lw + 2, w - lw - 2, values[i], ST_VALUE);
     }
 }
 

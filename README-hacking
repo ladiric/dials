@@ -24,6 +24,10 @@ Then run:
 The --enable-gcc-warnings option turns on many compiler warnings and
 treats them as errors.  Please use it while changing the code.
 
+Some tests read tests/root, a small made-up copy of /proc and /sys
+whose values are known, through the --sysroot option.  When code
+starts reading a new file, add it there and to tests/sysroot.sh.
+
 'make distcheck' builds a release tarball and checks that it builds,
 installs and passes its tests.  Checking the printed manual also needs
 texi2dvi from GNU Texinfo and a TeX installation.

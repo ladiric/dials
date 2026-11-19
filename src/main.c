@@ -30,7 +30,10 @@
 
 #include "app.h"
 #include "canvas.h"
+#include "cpu.h"
+#include "disk.h"
 #include "gpu.h"
+#include "memory.h"
 #include "pages.h"
 #include "source.h"
 #include "theme.h"
@@ -39,6 +42,7 @@
 enum
 {
   ONCE_OPTION = CHAR_MAX + 1,
+  SYSROOT_OPTION,
   HELP_OPTION,
   VERSION_OPTION
 };
@@ -49,6 +53,7 @@ static const struct option long_options[] = {
   { "page", required_argument, NULL, 'p' },
   { "theme", required_argument, NULL, 't' },
   { "once", no_argument, NULL, ONCE_OPTION },
+  { "sysroot", required_argument, NULL, SYSROOT_OPTION },
   { "help", no_argument, NULL, HELP_OPTION },
   { "version", no_argument, NULL, VERSION_OPTION },
   { NULL, 0, NULL, 0 }
@@ -72,6 +77,7 @@ Monitor the resources of this system in a full-screen terminal interface.\n\
   -p, --page=NAME          start on page NAME\n\
   -t, --theme=NAME         use the color theme NAME (default classic)\n\
       --once               print one plain-text report and exit\n\
+      --sysroot=DIR        read /proc and /sys under DIR (for testing)\n\
       --help               display this help and exit\n\
       --version            output version information and exit\n"),
              stdout);
@@ -125,11 +131,22 @@ parse_interval (const char *arg, double *out)
   return true;
 }
 
-static void
-print_line (const char *label, int width, const char *value)
+/* Lines of the plain-text report.  */
+struct report
 {
-  int pad = width - text_width (label);
-  printf ("%s:%*s %s\n", label, pad > 0 ? pad : 0, "", value);
+  int n;
+  char label[64][128];
+  char value[64][256];
+};
+
+static void
+add_line (struct report *r, const char *label, const char *value)
+{
+  if (r->n >= 64)
+    return;
+  str_copy (r->label[r->n], sizeof r->label[0], label, strlen (label));
+  str_copy (r->value[r->n], sizeof r->value[0], value, strlen (value));
+  r->n++;
 }
 
 /* Print a plain-text report, for scripts and for terminals that cannot
@@ -137,85 +154,146 @@ print_line (const char *label, int width, const char *value)
 static void
 report (struct source *src, bool demo)
 {
+  static struct cpu cpu;
+  static struct memory mem;
+  static struct disks disks;
   static struct gpus gpus;
+  static struct report r;
   struct sys_info in;
   struct sys_sample s;
   struct timespec pause = { 0, 250000000 };
-  char kernel[200], up[64], load[64], cpu[32], mem[96], swap[96], used[64];
+  char v[256], a1[64], a2[64], a3[64];
 
   source_info (src, &in);
+  cpu_open (&cpu, demo, 1);
+  memory_open (&mem, demo, 1);
+  disks_open (&disks, demo, 1);
   gpus_open (&gpus, demo, 1);
-  nanosleep (&pause, NULL);	/* CPU use needs two readings.  */
+  nanosleep (&pause, NULL);	/* Use and rates need two readings.  */
   source_sample (src, &s);
+  cpu_sample (&cpu);
+  memory_sample (&mem, false);
+  disks_sample (&disks, true);
   gpus_sample (&gpus, false);
 
-  snprintf (kernel, sizeof kernel, "%s %s", in.kernel, in.arch);
-  fmt_uptime (up, sizeof up, s.uptime);
+  add_line (&r, _("Host"), in.host);
+  add_line (&r, _("System"), in.os);
+  snprintf (v, sizeof v, "%s %s", in.kernel, in.arch);
+  add_line (&r, _("Kernel"), v);
+  add_line (&r, _("Processor"), in.cpu_model);
+  snprintf (v, sizeof v, "%d", cpu.n);
+  add_line (&r, _("CPUs"), v);
+  fmt_uptime (v, sizeof v, s.uptime);
+  add_line (&r, _("Uptime"), v);
   if (isnan (s.load[0]))
-    snprintf (load, sizeof load, "%s", _("n/a"));
+    snprintf (v, sizeof v, "%s", _("n/a"));
   else
-    snprintf (load, sizeof load, "%.2f %.2f %.2f",
-              s.load[0], s.load[1], s.load[2]);
-  if (isnan (s.cpu_pct))
-    snprintf (cpu, sizeof cpu, "%s", _("n/a"));
+    snprintf (v, sizeof v, "%.2f %.2f %.2f", s.load[0], s.load[1], s.load[2]);
+  add_line (&r, _("Load"), v);
+
+  fmt_pct (a1, sizeof a1, cpu.total);
+  if (isnan (cpu.total))
+    snprintf (v, sizeof v, "%s", a1);
   else
-    snprintf (cpu, sizeof cpu, "%.0f%%", s.cpu_pct);
-  fmt_used_total (used, sizeof used, s.mem_used, s.mem_total);
-  if (s.mem_total > 0)
-    snprintf (mem, sizeof mem, "%s (%.0f%%)", used,
-              100 * s.mem_used / s.mem_total);
-  else
-    snprintf (mem, sizeof mem, "%s", used);
-  if (s.swap_total > 0)
+    snprintf (v, sizeof v, _("%s (user %.0f%%, system %.0f%%, I/O wait %.0f%%)"),
+              a1, cpu.split.user, cpu.split.system, cpu.split.iowait);
+  add_line (&r, _("CPU"), v);
+  if (!isnan (cpu.mhz_avg))
     {
-      fmt_used_total (used, sizeof used, s.swap_used, s.swap_total);
-      snprintf (swap, sizeof swap, "%s (%.0f%%)", used,
-                100 * s.swap_used / s.swap_total);
+      fmt_mhz (a1, sizeof a1, cpu.mhz_avg);
+      fmt_mhz (a2, sizeof a2, cpu.mhz_max);
+      snprintf (v, sizeof v, _("%s average, %s maximum"), a1, a2);
+      add_line (&r, _("Frequency"), v);
+    }
+  if (!isnan (cpu.temp))
+    {
+      fmt_temp (v, sizeof v, cpu.temp);
+      add_line (&r, _("Temperature"), v);
+    }
+
+  fmt_used_total (a1, sizeof a1, mem.used, mem.total);
+  fmt_mib (a2, sizeof a2, mem.available);
+  if (mem.total > 0)
+    snprintf (v, sizeof v, _("%s (%.0f%%), %s available"), a1,
+              100 * mem.used / mem.total, a2);
+  else
+    snprintf (v, sizeof v, "%s", a1);
+  add_line (&r, _("Memory"), v);
+  if (mem.swap_total > 0)
+    {
+      fmt_used_total (a1, sizeof a1, mem.swap_used, mem.swap_total);
+      snprintf (v, sizeof v, "%s (%.0f%%)", a1,
+                100 * mem.swap_used / mem.swap_total);
     }
   else
-    snprintf (swap, sizeof swap, "%s", _("no swap"));
-
-  enum { BASE = 9 };
-  const char *labels[BASE + GPU_MAX] = {
-    _("Host"), _("System"), _("Kernel"), _("Processor"), _("Uptime"),
-    _("Load"), _("CPU"), _("Memory"), _("Swap")
-  };
-  const char *values[BASE + GPU_MAX] = {
-    in.host, in.os, kernel, in.cpu_model, up, load, cpu, mem, swap
-  };
-  int n = BASE;
+    snprintf (v, sizeof v, "%s", _("no swap"));
+  add_line (&r, _("Swap"), v);
 
   /* One line per GPU, or why there is none.  */
-  char glabel[GPU_MAX][32], gvalue[GPU_MAX][256];
   for (int i = 0; i < gpus.count; i++)
     {
       const struct gpu_sample *gs = &gpus.dev[i].cur;
-      char temp[32], util[16], vram[64], power[48];
+      char label[48], temp[32], util[16], vram[64], power[48];
       fmt_temp (temp, sizeof temp, gs->temp);
       fmt_pct (util, sizeof util, gs->util);
       fmt_used_total (vram, sizeof vram, gs->mem_used, gs->mem_total);
       fmt_of_limit (power, sizeof power, gs->power, gs->power_limit, "W");
-      snprintf (glabel[i], sizeof glabel[i], _("GPU %d"), i);
-      snprintf (gvalue[i], sizeof gvalue[i], "%s, %s, %s, %s, %s",
+      snprintf (label, sizeof label, _("GPU %d"), i);
+      snprintf (v, sizeof v, "%s, %s, %s, %s, %s",
                 gpus.dev[i].name, temp, util, vram, power);
-      labels[n] = glabel[i];
-      values[n++] = gvalue[i];
+      add_line (&r, label, v);
     }
   if (gpus.count == 0)
+    add_line (&r, _("GPU"), gpus.error);
+
+  for (int i = 0; i < disks.n; i++)
     {
-      labels[n] = _("GPU");
-      values[n++] = gpus.error;
+      const struct disk_dev *d = &disks.dev[i];
+      char label[64];
+      snprintf (label, sizeof label, _("Disk %s"), d->name);
+      fmt_bytes (a1, sizeof a1, d->size);
+      const char *kind = d->rotational ? _("hard disk") : _("solid state");
+      if (isnan (d->temp))
+        snprintf (v, sizeof v, "%s, %s, %s",
+                  d->model[0] ? d->model : "?", a1, kind);
+      else
+        {
+          fmt_temp (a2, sizeof a2, d->temp);
+          snprintf (v, sizeof v, "%s, %s, %s, %s",
+                    d->model[0] ? d->model : "?", a1, kind, a2);
+        }
+      add_line (&r, label, v);
+    }
+  for (int i = 0; i < disks.nfs; i++)
+    {
+      const struct fs_entry *f = &disks.fs[i];
+      fmt_bytes (a1, sizeof a1, f->used);
+      fmt_bytes (a2, sizeof a2, f->size);
+      fmt_bytes (a3, sizeof a3, f->avail);
+      if (f->size > 0)
+        snprintf (v, sizeof v, _("%s, %s of %s used (%.0f%%), %s free"),
+                  f->type, a1, a2, 100 * f->used / f->size, a3);
+      else
+        snprintf (v, sizeof v, "%s, %s", f->type, f->device);
+      add_line (&r, f->mount, v);
     }
 
   int width = 0;
-  for (int i = 0; i < n; i++)
+  for (int i = 0; i < r.n; i++)
     {
-      int w = text_width (labels[i]);
+      int w = text_width (r.label[i]);
       if (w > width)
         width = w;
     }
-  for (int i = 0; i < n; i++)
-    print_line (labels[i], width, values[i]);
+  for (int i = 0; i < r.n; i++)
+    {
+      int pad = width - text_width (r.label[i]);
+      printf ("%s:%*s %s\n", r.label[i], pad > 0 ? pad : 0, "", r.value[i]);
+    }
+
+  cpu_close (&cpu);
+  memory_close (&mem);
+  disks_close (&disks);
   gpus_close (&gpus);
 }
 
@@ -259,6 +337,9 @@ main (int argc, char **argv)
         break;
       case ONCE_OPTION:
         once = true;
+        break;
+      case SYSROOT_OPTION:
+        set_sysroot (optarg);
         break;
       case HELP_OPTION:
         usage (EXIT_SUCCESS);

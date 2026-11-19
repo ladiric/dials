@@ -48,6 +48,10 @@ int page_find (const char *id);
 void page_overview_draw (struct app *a, struct canvas *cv, struct rect r);
 void page_placeholder_draw (struct app *a, struct canvas *cv,
                             struct rect r);
+void page_cpu_draw (struct app *a, struct canvas *cv, struct rect r);
+void page_memory_draw (struct app *a, struct canvas *cv, struct rect r);
+void page_disk_draw (struct app *a, struct canvas *cv, struct rect r);
+bool page_disk_key (struct app *a, int ch);
 void page_gpu_draw (struct app *a, struct canvas *cv, struct rect r);
 bool page_gpu_key (struct app *a, int ch);
 

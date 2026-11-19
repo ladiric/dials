@@ -119,19 +119,6 @@ draw_list (struct app *a, struct canvas *cv, int y, int x, int w, int rows)
     }
 }
 
-/* Draw "LABEL VALUE" at X if it fits before END; return the next X.  */
-static int
-put_pair (struct canvas *cv, int y, int x, int end, const char *label,
-          const char *value)
-{
-  int need = text_width (label) + 1 + text_width (value);
-  if (x + need > end)
-    return x;
-  x += canvas_put (cv, y, x, -1, label, ST_LABEL) + 1;
-  x += canvas_put (cv, y, x, -1, value, ST_VALUE);
-  return x + 3;
-}
-
 static void
 fmt_clock (char *buf, size_t size, double cur, double max)
 {
@@ -146,36 +133,36 @@ draw_details (struct app *a, struct canvas *cv, int y, int x, int w,
   char buf[64];
 
   if (a->gpus.driver[0])
-    x = put_pair (cv, y, x, end, _("Driver"), a->gpus.driver);
+    x = widget_pair (cv, y, x, end, _("Driver"), a->gpus.driver);
   if (s->pstate >= 0)
     {
       snprintf (buf, sizeof buf, "P%d", s->pstate);
-      x = put_pair (cv, y, x, end, _("State"), buf);
+      x = widget_pair (cv, y, x, end, _("State"), buf);
     }
   if (!isnan (s->clock_sm))
     {
       fmt_clock (buf, sizeof buf, s->clock_sm, s->clock_sm_max);
-      x = put_pair (cv, y, x, end, _("Clock"), buf);
+      x = widget_pair (cv, y, x, end, _("Clock"), buf);
     }
   if (!isnan (s->clock_mem))
     {
       fmt_clock (buf, sizeof buf, s->clock_mem, s->clock_mem_max);
-      x = put_pair (cv, y, x, end, _("Memory clock"), buf);
+      x = widget_pair (cv, y, x, end, _("Memory clock"), buf);
     }
   if (!isnan (s->fan))
     {
       fmt_pct (buf, sizeof buf, s->fan);
-      x = put_pair (cv, y, x, end, _("Fan"), buf);
+      x = widget_pair (cv, y, x, end, _("Fan"), buf);
     }
   if (!isnan (s->enc))
     {
       fmt_pct (buf, sizeof buf, s->enc);
-      x = put_pair (cv, y, x, end, _("Encoder"), buf);
+      x = widget_pair (cv, y, x, end, _("Encoder"), buf);
     }
   if (!isnan (s->dec))
     {
       fmt_pct (buf, sizeof buf, s->dec);
-      put_pair (cv, y, x, end, _("Decoder"), buf);
+      widget_pair (cv, y, x, end, _("Decoder"), buf);
     }
 }
 

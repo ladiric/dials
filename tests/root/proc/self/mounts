@@ -1,0 +1,5 @@
+/dev/nvme0n1p2 / ext4 rw,relatime 0 0
+proc /proc proc rw 0 0
+/dev/nvme0n1p2 /home ext4 rw,relatime 0 0
+/dev/sda1 /mnt/my\040disk xfs rw 0 0
+server:/export /net nfs rw 0 0

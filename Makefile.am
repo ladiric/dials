@@ -11,11 +11,12 @@ TESTS = \
   tests/version.sh \
   tests/help.sh \
   tests/options.sh \
-  tests/once.sh
+  tests/once.sh \
+  tests/sysroot.sh
 TEST_EXTENSIONS = .sh
 SH_LOG_COMPILER = $(SHELL)
 AM_TESTS_ENVIRONMENT = \
   DIALS='$(abs_top_builddir)/src/dials$(EXEEXT)'; export DIALS; \
   LC_ALL=C; export LC_ALL;
 
-EXTRA_DIST = bootstrap README-hacking $(TESTS)
+EXTRA_DIST = bootstrap README-hacking $(TESTS) tests/root

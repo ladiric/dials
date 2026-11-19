@@ -28,7 +28,8 @@ int level_style (double frac);
 /* Format V in at most four characters, such as "980" or "31k".  */
 void fmt_compact (char *buf, size_t size, double v);
 
-/* Format a size in MiB in at most four characters: "512M", "6.0G".  */
+/* Format a size in MiB in at most four characters: "512K", "512M",
+   "6.0G".  */
 void fmt_axis_mib (char *buf, size_t size, double mib);
 
 /* Draw "LABEL ████░░░░  54%  TEXT" on row Y.  LABEL_W and TEXT_W
@@ -59,6 +60,26 @@ void widget_stat_block (struct canvas *cv, struct rect r, const char *title,
                         const char *value, double frac, int st,
                         const struct metric *m,
                         void (*fmt) (char *, size_t, double));
+
+/* Draw "LABEL VALUE" at X if it fits before END.  Return where the
+   next pair goes, or X if this one did not fit.  */
+int widget_pair (struct canvas *cv, int y, int x, int end, const char *label,
+                 const char *value);
+
+/* The same, after a mark in style ST, for the legend of a stacked bar.  */
+int widget_legend (struct canvas *cv, int y, int x, int end, int st,
+                   const char *label, const char *value);
+
+/* Draw a bar W wide made of N parts: FRACS[i] of it in STYLES[i], the
+   rest empty.  */
+void widget_stacked_bar (struct canvas *cv, int y, int x, int w,
+                         const double *fracs, const int *styles, int n);
+
+/* Draw N rows of LABELS and VALUES from Y, X, the values lined up after
+   the widest label, in at most W columns.  */
+void widget_values (struct canvas *cv, int y, int x, int w,
+                    const char *const *labels, const char *const *values,
+                    int n);
 
 /* A table column.  */
 struct table_col

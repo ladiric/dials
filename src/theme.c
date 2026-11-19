@@ -27,6 +27,7 @@
 #define G COLOR_GREEN
 #define Y COLOR_YELLOW
 #define B COLOR_BLUE
+#define M COLOR_MAGENTA
 #define C COLOR_CYAN
 #define W COLOR_WHITE
 
@@ -56,6 +57,7 @@ static const struct style_def classic[ST_COUNT] = {
   [ST_KEYLBL] = { K, C, false },
   [ST_ALERT] = { W, R, true },
   [ST_SEL] = { K, C, false },
+  [ST_ACCENT] = { M, BG, true },
   [ST_DLG] = { K, W, false },
   [ST_DLG_FRAME] = { K, W, false },
   [ST_DLG_TITLE] = { B, W, true },
@@ -80,6 +82,7 @@ static const attr_t mono[ST_COUNT] = {
   [ST_KEYLBL] = A_REVERSE,
   [ST_ALERT] = A_REVERSE | A_BOLD,
   [ST_SEL] = A_REVERSE,
+  [ST_ACCENT] = A_BOLD,
   [ST_DLG] = A_REVERSE,
   [ST_DLG_FRAME] = A_REVERSE,
   [ST_DLG_TITLE] = A_REVERSE | A_BOLD,

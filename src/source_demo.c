@@ -25,16 +25,14 @@
 #include "source.h"
 #include "util.h"
 
-/* A random walk that looks like a busy 16-core machine.  It is useful
-   for screenshots, for tests and for working on the interface without
-   the real hardware.  */
-
-enum { DEMO_MEM = 32768, DEMO_SWAP = 8192 };
+/* A busy 16-core machine whose load wanders.  It is useful for
+   screenshots, for tests and for working on the interface without the
+   real hardware.  */
 
 struct demo_src
 {
   uint64_t rng;
-  double cpu, mem, swap, load[3];
+  double busy, load[3];
   time_t start;
 };
 
@@ -59,9 +57,7 @@ demo_open (struct source *s)
 {
   struct demo_src *p = xcalloc (1, sizeof *p);
   p->rng = UINT64_C (0x9E3779B97F4A7C15);
-  p->cpu = 30;
-  p->mem = 12000;
-  p->swap = 300;
+  p->busy = 30;
   p->start = time (NULL);
   s->priv = p;
   return true;
@@ -77,7 +73,6 @@ demo_info (struct source *s, struct sys_info *info)
   str_copy (info->arch, sizeof info->arch, "x86_64", 6);
   str_copy (info->cpu_model, sizeof info->cpu_model,
             "Demo CPU 16-Core Processor", 26);
-  info->ncpu = 16;
 }
 
 static void
@@ -87,21 +82,14 @@ demo_sample (struct source *s, struct sys_sample *out)
   struct demo_src *p = s->priv;
 
   if (rnd (p) < 0.08)
-    p->cpu = jumps[(int) (rnd (p) * ARRAY_CARDINALITY (jumps))];
-  p->cpu = clamp (p->cpu + rnd (p) * 24 - 12, 0, 100);
-  p->mem = clamp (p->mem + rnd (p) * 1900 - 900, 2000, DEMO_MEM);
-  p->swap = clamp (p->swap + rnd (p) * 60 - 30, 0, 2048);
+    p->busy = jumps[(int) (rnd (p) * ARRAY_CARDINALITY (jumps))];
+  p->busy = clamp (p->busy + rnd (p) * 24 - 12, 0, 100);
 
-  double target = p->cpu / 100 * 16;
+  double target = p->busy / 100 * 16;
   static const double weight[3] = { 0.3, 0.08, 0.03 };
   for (int i = 0; i < 3; i++)
     p->load[i] += (target - p->load[i]) * weight[i];
 
-  out->cpu_pct = p->cpu;
-  out->mem_used = p->mem;
-  out->mem_total = DEMO_MEM;
-  out->swap_used = p->swap;
-  out->swap_total = DEMO_SWAP;
   memcpy (out->load, p->load, sizeof out->load);
   out->uptime = 3 * 86400 + 4 * 3600 + 12 * 60
                 + (double) (time (NULL) - p->start);

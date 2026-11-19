@@ -64,9 +64,6 @@ source_sample (struct source *s, struct sys_sample *out)
 void
 sys_sample_clear (struct sys_sample *s)
 {
-  s->cpu_pct = NAN;
-  s->mem_used = s->mem_total = NAN;
-  s->swap_used = s->swap_total = NAN;
   s->load[0] = s->load[1] = s->load[2] = NAN;
   s->uptime = NAN;
 }

@@ -29,24 +29,19 @@ struct sys_info
   char kernel[128];
   char arch[64];
   char cpu_model[128];
-  int ncpu;
 };
 
-/* One sample.  Sizes are in MiB.  Unknown values are NaN.  */
+/* One sample.  Unknown values are NaN.  */
 struct sys_sample
 {
-  double cpu_pct;
-  double mem_used, mem_total;
-  double swap_used, swap_total;
   double load[3];
-  double uptime;
+  double uptime;		/* Seconds.  */
 };
 
 struct source;
 
-/* A source of measurements: the running system, or simulated data.
-   Other subsystems get providers of their own behind the same
-   kind of interface.  */
+/* Facts about the whole system, from the running system or simulated.
+   The processors, memory, disks and GPUs have modules of their own.  */
 struct source_ops
 {
   bool (*open) (struct source *s);

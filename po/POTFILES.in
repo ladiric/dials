@@ -1,9 +1,15 @@
 # Source files that contain translatable strings.
 src/app.c
+src/cpu.c
+src/disk.c
 src/gpu.c
 src/gpu_nvml.c
 src/main.c
+src/memory.c
+src/page_cpu.c
+src/page_disk.c
 src/page_gpu.c
+src/page_memory.c
 src/page_overview.c
 src/page_placeholder.c
 src/pages.c

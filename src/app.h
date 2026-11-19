@@ -23,7 +23,10 @@
 #include <stddef.h>
 
 #include "canvas.h"
+#include "cpu.h"
+#include "disk.h"
 #include "gpu.h"
+#include "memory.h"
 #include "metric.h"
 #include "source.h"
 
@@ -41,8 +44,11 @@ struct app
   struct source *src;
   struct sys_info info;
   struct sys_sample cur;
-  struct metric m_cpu, m_mem, m_swap;	/* Percentages.  */
+  struct cpu cpu;
+  struct memory mem;
+  struct disks disks;
   struct gpus gpus;
+  size_t disk_sel;		/* Disk shown in detail on the Disks page.  */
   size_t gpu_sel;		/* GPU shown in detail on the GPU page.  */
   double interval;		/* Seconds between samples.  */
   bool paused, quit, dirty, demo;

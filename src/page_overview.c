@@ -75,7 +75,7 @@ page_overview_draw (struct app *a, struct canvas *cv, struct rect r)
   else
     snprintf (load, sizeof load, "%.2f %.2f %.2f",
               s->load[0], s->load[1], s->load[2]);
-  snprintf (ncpu, sizeof ncpu, "%d", in->ncpu);
+  snprintf (ncpu, sizeof ncpu, "%d", a->cpu.n);
   fmt_interval (sampling, sizeof sampling, a->interval);
 
   const char *l1[4] = { _("Host"), _("System"), _("Kernel"), _("Processor") };
@@ -106,10 +106,11 @@ page_overview_draw (struct app *a, struct canvas *cv, struct rect r)
   y++;
 
   /* Meters.  */
+  const struct memory *m = &a->mem;
   char mem[64], swap[64];
-  fmt_used_total (mem, sizeof mem, s->mem_used, s->mem_total);
-  if (s->swap_total > 0)
-    fmt_used_total (swap, sizeof swap, s->swap_used, s->swap_total);
+  fmt_used_total (mem, sizeof mem, m->used, m->total);
+  if (m->swap_total > 0)
+    fmt_used_total (swap, sizeof swap, m->swap_used, m->swap_total);
   else
     snprintf (swap, sizeof swap, "%s", _("no swap"));
   /* One meter per GPU, up to two, showing its utilization and video
@@ -132,11 +133,11 @@ page_overview_draw (struct app *a, struct canvas *cv, struct rect r)
       mt[2 + i] = gtext[i];
     }
   int mlw = max_width (ml, 3 + ngpu), mtw = max_width (mt, 2 + ngpu);
-  widget_meter (cv, y, x, w, ml[0], mlw, s->cpu_pct / 100, NULL, mtw);
-  widget_meter (cv, y + 1, x, w, ml[1], mlw,
-                fraction (s->mem_used, s->mem_total), mem, mtw);
+  widget_meter (cv, y, x, w, ml[0], mlw, a->cpu.total / 100, NULL, mtw);
+  widget_meter (cv, y + 1, x, w, ml[1], mlw, fraction (m->used, m->total),
+                mem, mtw);
   widget_meter (cv, y + 2, x, w, ml[2], mlw,
-                fraction (s->swap_used, s->swap_total), swap, mtw);
+                fraction (m->swap_used, m->swap_total), swap, mtw);
   y += 3;
   for (int i = 0; i < ngpu; i++, y++)
     widget_meter (cv, y, x, w, glabel[i], mlw,
@@ -148,9 +149,10 @@ page_overview_draw (struct app *a, struct canvas *cv, struct rect r)
       struct rect g1 = { y, r.x + 1, bottom - y, (r.w - 2) / 2 };
       struct rect g2 = { y, g1.x + g1.w, bottom - y, r.w - 2 - g1.w };
       char t1[64], t2[64];
-      title_with_pct (t1, sizeof t1, _("CPU"), metric_last (&a->m_cpu));
-      title_with_pct (t2, sizeof t2, _("Memory"), metric_last (&a->m_mem));
-      widget_graph_box (cv, g1, t1, &a->m_cpu, 100, 100, NULL, a->interval);
-      widget_graph_box (cv, g2, t2, &a->m_mem, 100, 100, NULL, a->interval);
+      const struct metric *mc = &a->cpu.m_total, *mm = &a->mem.m_used;
+      title_with_pct (t1, sizeof t1, _("CPU"), metric_last (mc));
+      title_with_pct (t2, sizeof t2, _("Memory"), metric_last (mm));
+      widget_graph_box (cv, g1, t1, mc, 100, 100, NULL, a->interval);
+      widget_graph_box (cv, g2, t2, mm, 100, 100, NULL, a->interval);
     }
 }

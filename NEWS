@@ -11,6 +11,17 @@ Dials NEWS                                    -*- outline -*-
   The Overview page shows the host and system, uptime, load, and the
   use of the processors, memory and swap with their recent history.
 
+  The CPU page shows how the processors' time is used, the use and
+  frequency of each processor, the temperature, load, pressure and the
+  rates of context switches, interrupts and new processes.
+
+  The Memory page divides memory between programs, the kernel, buffers
+  and cache, and shows swap, zram, paging rates, memory pressure and
+  the processes with the most memory.
+
+  The Disks page shows the throughput, busy time, latency and
+  temperature of each disk, and the space on each local file system.
+
   The GPU page lists NVIDIA graphics processors with their
   temperature, utilization, video memory, power, clocks and fan speed,
   graphs of their history, and the processes using them.  Dials reads
@@ -19,6 +30,8 @@ Dials NEWS                                    -*- outline -*-
 
   The --demo option shows simulated data, and --once prints a
   plain-text report instead of starting the full-screen interface.
+  The --sysroot option reads a saved copy of /proc and /sys, for
+  testing.
 
 ========================================================================
 

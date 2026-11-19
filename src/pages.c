@@ -20,29 +20,6 @@
 
 #include "pages.h"
 
-static const char *const cpu_plan[] = {
-  N_("Total and per-core use: user, system, I/O wait, IRQ, steal"),
-  N_("Per-core frequency and package temperature"),
-  N_("Load averages, context switches and interrupts"),
-  N_("CPU pressure stall information"),
-  NULL
-};
-
-static const char *const memory_plan[] = {
-  N_("Used, buffers, cache, shared, slab and free memory"),
-  N_("Swap and zram compression"),
-  N_("Dirty and writeback pages, page faults"),
-  N_("Memory pressure and the largest processes"),
-  NULL
-};
-
-static const char *const disk_plan[] = {
-  N_("Throughput, operations, utilization and latency per device"),
-  N_("Space used on each mounted file system"),
-  N_("Drive temperatures"),
-  NULL
-};
-
 static const char *const network_plan[] = {
   N_("Receive and transmit rates per interface"),
   N_("Errors, drops, link speed and addresses"),
@@ -70,10 +47,10 @@ static const char *const power_plan[] = {
 
 const struct page pages[] = {
   { "overview", N_("Overview"), page_overview_draw, NULL, NULL },
-  { "cpu", N_("CPU"), page_placeholder_draw, cpu_plan, NULL },
-  { "memory", N_("Memory"), page_placeholder_draw, memory_plan, NULL },
+  { "cpu", N_("CPU"), page_cpu_draw, NULL, NULL },
+  { "memory", N_("Memory"), page_memory_draw, NULL, NULL },
   { "gpu", N_("GPU"), page_gpu_draw, NULL, page_gpu_key },
-  { "disk", N_("Disks"), page_placeholder_draw, disk_plan, NULL },
+  { "disk", N_("Disks"), page_disk_draw, NULL, page_disk_key },
   { "network", N_("Network"), page_placeholder_draw, network_plan, NULL },
   { "processes", N_("Processes"), page_placeholder_draw,
     processes_plan, NULL },
