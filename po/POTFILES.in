@@ -1,0 +1,10 @@
+# Source files that contain translatable strings.
+src/app.c
+src/main.c
+src/page_overview.c
+src/page_placeholder.c
+src/pages.c
+src/source_demo.c
+src/ui.c
+src/util.c
+src/widgets.c

@@ -1,0 +1,23 @@
+Dials NEWS                                    -*- outline -*-
+
+* Noteworthy changes in release ?.? (????-??-??) [?]
+
+** New features
+
+  A full-screen interface with a menu bar (F9), a function-key bar,
+  pages to switch between with 1-9, Alt-1..9 and Ctrl-PgUp/PgDn, and
+  four color themes: classic, blue, dark and mono.
+
+  The Overview page shows the host and system, uptime, load, and the
+  use of the processors, memory and swap with their recent history.
+
+  The --demo option shows simulated data, and --once prints a
+  plain-text report instead of starting the full-screen interface.
+
+========================================================================
+
+Copyright (C) 2026 Richard L.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.

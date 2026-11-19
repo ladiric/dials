@@ -1,0 +1,17 @@
+#! /bin/sh
+# Prepare a freshly checked out Dials tree for './configure'.
+# Copyright (C) 2026 Richard L.
+#
+# This file is part of Dials, distributed under the GNU General
+# Public License, version 3 or later.  See COPYING.
+#
+# Needs Autoconf, Automake, gettext (autopoint) and pkg-config.
+# Building the documentation also needs Texinfo and help2man.
+
+set -e
+cd "$(dirname "$0")"
+mkdir -p m4 build-aux
+autopoint --force
+autoreconf --install --force --verbose "$@"
+echo
+echo "Now run './configure && make'."

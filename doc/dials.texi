@@ -1,0 +1,198 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename dials.info
+@include version.texi
+@settitle Dials @value{VERSION}
+@defcodeindex op
+@syncodeindex op cp
+@c %**end of header
+
+@copying
+This manual is for Dials (version @value{VERSION}, @value{UPDATED}),
+a full-screen monitor of system resources.
+
+Copyright @copyright{} 2026 Richard L.
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
+Texts.  A copy of the license is included in the section entitled
+``GNU Free Documentation License''.
+@end quotation
+@end copying
+
+@dircategory System administration
+@direntry
+* Dials: (dials).               Monitor system resources in a terminal.
+@end direntry
+
+@titlepage
+@title Dials
+@subtitle A full-screen monitor of system resources
+@subtitle for version @value{VERSION}, @value{UPDATED}
+@author Richard L
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top
+@top Dials
+
+This manual is for Dials (version @value{VERSION}, @value{UPDATED}).
+@end ifnottex
+
+@menu
+* Overview::            What Dials does.
+* Invoking dials::      Command-line options.
+* The screen::          Menu bar, pages and function keys.
+* Keys::                Keyboard commands.
+* Reporting bugs::      Sending bug reports.
+* GNU Free Documentation License::  Copying this manual.
+* Index::
+@end menu
+
+@node Overview
+@chapter Overview
+@cindex overview
+
+Dials shows how busy a GNU/Linux system is, live, in a full-screen
+terminal interface in the style of the classic two-panel file
+managers.  Each subsystem has its own page: an overview, the
+processors, memory, graphics processors, disks, network, processes,
+hardware sensors and power.
+
+Dials reads its measurements from @file{/proc} and @file{/sys}.  It
+keeps the files it reads open and rereads them in place, so it uses
+very little of the processor time it measures.
+
+This version is an early skeleton.  The Overview page works; the
+other pages describe what they will show.
+
+@node Invoking dials
+@chapter Invoking @command{dials}
+@cindex invoking
+@cindex options
+
+@example
+dials [@var{option}]@dots{}
+@end example
+
+@table @option
+@item -d
+@itemx --demo
+@opindex --demo
+Show simulated data instead of this system's.  This is useful for
+trying the interface and for screenshots.
+
+@item -i @var{seconds}
+@itemx --interval=@var{seconds}
+@opindex --interval
+Take a sample every @var{seconds}, which may be a fraction from 0.1 to
+3600.  The default is 1.
+
+@item -p @var{name}
+@itemx --page=@var{name}
+@opindex --page
+Start on page @var{name}: one of @samp{overview}, @samp{cpu},
+@samp{memory}, @samp{gpu}, @samp{disk}, @samp{network},
+@samp{processes}, @samp{sensors} or @samp{power}.
+
+@item -t @var{name}
+@itemx --theme=@var{name}
+@opindex --theme
+Use the color theme @var{name}: @samp{classic} (white on dark navy, the
+default), @samp{blue} (white on the terminal's blue), @samp{dark} or
+@samp{mono}.  Terminals without color always use @samp{mono}.
+
+@item --once
+@opindex --once
+Print one plain-text report on standard output and exit, without
+starting the full-screen interface.
+
+@item --help
+@opindex --help
+Print a summary of the options and exit.
+
+@item --version
+@opindex --version
+Print the version number and licensing information and exit.
+@end table
+
+@node The screen
+@chapter The screen
+@cindex screen layout
+
+The top line is the menu bar.  Press @kbd{F9} to open it; the right
+end shows the current page, whether sampling is live, paused or
+simulated, the sampling interval and the time.
+
+The bottom line lists what the function keys do.
+
+Between them is the current page.  Graphs scroll from right to left,
+with the newest sample on the right; the label on the bottom of a
+graph tells how much time it spans.  Bars and graphs are green below
+60% of their limit, yellow below 85% and red above.
+
+@node Keys
+@chapter Keys
+@cindex keys
+
+@table @kbd
+@item F1
+@itemx h
+@itemx ?
+Show the list of keys.
+@item F2
+@itemx p
+@itemx @key{SPC}
+Pause or resume sampling.
+@item F3
+@itemx -
+Sample less often.
+@item F4
+@itemx +
+Sample more often.
+@item F7
+@itemx r
+Clear the history graphs.
+@item F9
+Open the menu bar.  Use the arrow keys to move, @key{RET} to choose and
+@key{ESC} to close it.
+@item F10
+@itemx q
+Quit.
+@item 1 @dots{} 9
+@itemx M-1 @dots{} M-9
+Go to a page.
+@item C-@key{PgUp}
+@itemx C-@key{PgDn}
+Go to the previous or next page.
+@item t
+Switch to the next color theme.
+@end table
+
+@node Reporting bugs
+@chapter Reporting bugs
+@cindex bugs, reporting
+
+Please include the output of @samp{dials --version} and
+@samp{dials --once} in a bug report, together with the name of the
+terminal you use.
+
+@node GNU Free Documentation License
+@appendix GNU Free Documentation License
+
+@include fdl.texi
+
+@node Index
+@unnumbered Index
+
+@printindex cp
+
+@bye
