@@ -1,0 +1,24 @@
+# Keep the actions that the workflows use up to date.
+# Copyright (C) 2026 Richard L.
+#
+# This file is part of Dials, distributed under the GNU General
+# Public License, version 3 or later.  See COPYING.
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    # The workflows, and the shared steps under .github/actions.
+    directories:
+      - /
+      - /.github/actions/*
+    # Changes go to develop, like all other work, and reach master
+    # with the next release.
+    target-branch: develop
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: Update
