@@ -16,8 +16,12 @@ each part of the system:
   Power       battery state and power use
 
 This is an early version, and its pages may still change.  The GPU
-page shows NVIDIA graphics processors, using the monitoring library
-that comes with the NVIDIA driver when it is installed.
+page shows NVIDIA graphics processors through the monitoring library
+that comes with the NVIDIA driver, when it is installed, and AMD and
+Intel ones through the kernel's drivers.
+
+Two pages can be shown side by side, the setup can be saved for the
+next run, and measurements can be logged to a CSV or JSON file.
 
 Dials reads its measurements from /proc and /sys.  It needs a C
 compiler, pkg-config and the wide-character curses library (ncursesw)

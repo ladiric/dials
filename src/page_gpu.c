@@ -132,8 +132,9 @@ draw_details (struct app *a, struct canvas *cv, int y, int x, int w,
   int end = x + w;
   char buf[64];
 
-  if (a->gpus.driver[0])
-    x = widget_pair (cv, y, x, end, _("Driver"), a->gpus.driver);
+  const struct gpu_dev *d = &a->gpus.dev[a->gpu_sel];
+  if (d->driver[0])
+    x = widget_pair (cv, y, x, end, _("Driver"), d->driver);
   if (s->pstate >= 0)
     {
       snprintf (buf, sizeof buf, "P%d", s->pstate);
@@ -274,6 +275,13 @@ draw_procs (struct app *a, struct canvas *cv, int y, int x, int w, int h,
   if (!a->gpus.procs_valid)
     {
       canvas_put_center (cv, y + 1, x, w, _("Reading processes..."), ST_DIM);
+      return;
+    }
+  if (!s->procs_known)
+    {
+      canvas_put_center (cv, y + 1, x, w,
+                         _("This GPU's driver does not list its processes."),
+                         ST_DIM);
       return;
     }
   if (s->nproc == 0)

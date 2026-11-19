@@ -21,6 +21,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <sys/types.h>
 
 void *xmalloc (size_t n);
@@ -34,6 +35,11 @@ void str_copy (char *dst, size_t size, const char *src, size_t len);
 /* Like strtod, but always with '.' as the decimal point, as in the
    files of /proc, whatever the locale.  */
 double c_strtod (const char *s, char **end);
+
+/* Like fprintf, but always with '.' as the decimal point, for files
+   that programs read.  */
+int c_fprintf (FILE *f, const char *format, ...)
+  __attribute__ ((__format__ (__printf__, 2, 3)));
 
 /* Open PATH read-only.  Return the descriptor, or -1.  */
 int open_ro (const char *path);

@@ -69,7 +69,7 @@ clamp (double v, double lo, double hi)
 }
 
 static bool
-demo_open (void **priv, char *driver, size_t dsize, char *err, size_t esize)
+demo_open (void **priv, char *err, size_t esize)
 {
   (void) err;
   (void) esize;
@@ -77,7 +77,6 @@ demo_open (void **priv, char *driver, size_t dsize, char *err, size_t esize)
   p->rng = UINT64_C (0x2545F4914F6CDD1D);
   p->g[0] = (struct demo_gpu) { "Demo GPU 24 GB", 24576, 450, 45, 30, 3000 };
   p->g[1] = (struct demo_gpu) { "Demo GPU 40 GB", 40960, 400, 40, 60, 12000 };
-  snprintf (driver, dsize, "%s", "demo");
   *priv = p;
   return true;
 }
@@ -90,10 +89,12 @@ demo_count (void *priv)
 }
 
 static void
-demo_name (void *priv, int i, char *buf, size_t size)
+demo_describe (void *priv, int i, char *buf, size_t size, char *driver,
+               size_t dsize)
 {
   struct demo_gpus *p = priv;
   snprintf (buf, size, "%s", p->g[i].name);
+  snprintf (driver, dsize, "%s", "demo");
 }
 
 static void
@@ -126,6 +127,7 @@ demo_sample (void *priv, int i, bool details, struct gpu_sample *s)
   s->dec = 0;
   s->pstate = g->util > 5 ? 2 : 8;
 
+  s->procs_known = true;
   if (details)
     for (size_t k = 0; k < ARRAY_CARDINALITY (demo_procs); k++)
       {
@@ -146,5 +148,5 @@ demo_close (void *priv)
 }
 
 const struct gpu_backend gpu_demo_backend = {
-  demo_open, demo_count, demo_name, demo_sample, demo_close
+  demo_open, demo_count, demo_describe, demo_sample, demo_close
 };

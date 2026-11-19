@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <langinfo.h>
 #include <locale.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
@@ -80,17 +81,35 @@ str_copy (char *dst, size_t size, const char *src, size_t len)
   dst[len] = '\0';
 }
 
+static locale_t
+c_locale (void)
+{
+  static locale_t loc;
+  if (!loc)
+    {
+      loc = newlocale (LC_ALL_MASK, "C", (locale_t) 0);
+      if (!loc)
+        xalloc_die ();
+    }
+  return loc;
+}
+
 double
 c_strtod (const char *s, char **end)
 {
-  static locale_t c_locale;
-  if (!c_locale)
-    {
-      c_locale = newlocale (LC_NUMERIC_MASK, "C", (locale_t) 0);
-      if (!c_locale)
-        xalloc_die ();
-    }
-  return strtod_l (s, end, c_locale);
+  return strtod_l (s, end, c_locale ());
+}
+
+int
+c_fprintf (FILE *f, const char *format, ...)
+{
+  va_list ap;
+  locale_t old = uselocale (c_locale ());
+  va_start (ap, format);
+  int n = vfprintf (f, format, ap);
+  va_end (ap);
+  uselocale (old);
+  return n;
 }
 
 int

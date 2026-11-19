@@ -38,6 +38,7 @@
 #include "power.h"
 #include "procs.h"
 #include "sensors.h"
+#include "settings.h"
 #include "pages.h"
 #include "source.h"
 #include "theme.h"
@@ -46,6 +47,7 @@
 enum
 {
   ONCE_OPTION = CHAR_MAX + 1,
+  LOG_OPTION,
   SYSROOT_OPTION,
   HELP_OPTION,
   VERSION_OPTION
@@ -56,6 +58,7 @@ static const struct option long_options[] = {
   { "interval", required_argument, NULL, 'i' },
   { "page", required_argument, NULL, 'p' },
   { "theme", required_argument, NULL, 't' },
+  { "log", required_argument, NULL, LOG_OPTION },
   { "once", no_argument, NULL, ONCE_OPTION },
   { "sysroot", required_argument, NULL, SYSROOT_OPTION },
   { "help", no_argument, NULL, HELP_OPTION },
@@ -80,6 +83,8 @@ Monitor the resources of this system in a full-screen terminal interface.\n\
   -i, --interval=SECONDS   take a sample every SECONDS (default 1)\n\
   -p, --page=NAME          start on page NAME\n\
   -t, --theme=NAME         use the color theme NAME (default classic)\n\
+      --log=FILE           log each sample to FILE: CSV, or JSON lines\n\
+                             if FILE ends in .json or .jsonl\n\
       --once               print one plain-text report and exit\n\
       --sysroot=DIR        read /proc and /sys under DIR (for testing)\n\
       --help               display this help and exit\n\
@@ -94,7 +99,9 @@ Monitor the resources of this system in a full-screen terminal interface.\n\
         printf (" %s", theme_name (i));
       fputs (_("\n\
 \n\
-While the program runs, press F1 for the list of keys and F10 to quit.\n"),
+While the program runs, press F1 for the list of keys and F10 to quit.\n\
+Settings saved with Options > Save setup are read from\n\
+$XDG_CONFIG_HOME/dials/dials.conf, or ~/.config/dials/dials.conf.\n"),
              stdout);
 
       if (PACKAGE_BUGREPORT[0])
@@ -399,8 +406,9 @@ int
 main (int argc, char **argv)
 {
   bool demo = false, once = false;
-  double interval = 1.0;
-  int page = 0, theme = 0;
+  double interval = NAN;	/* Unset values come from the settings.  */
+  int page = -1, theme = -1;
+  const char *log_path = NULL;
   int c;
 
   setlocale (LC_ALL, "");
@@ -436,6 +444,9 @@ main (int argc, char **argv)
       case ONCE_OPTION:
         once = true;
         break;
+      case LOG_OPTION:
+        log_path = optarg;
+        break;
       case SYSROOT_OPTION:
         set_sysroot (optarg);
         break;
@@ -455,6 +466,19 @@ main (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
+  /* Settings from the file, then the options given.  */
+  struct settings set;
+  char config[4096] = "";
+  settings_init (&set);
+  if (settings_file (config, sizeof config))
+    settings_load (&set, config);
+  if (!isnan (interval))
+    set.interval = interval;
+  if (page >= 0)
+    set.panels[set.active] = (size_t) page;
+  if (theme >= 0)
+    set.theme = theme;
+
   struct source *src = source_new (demo);
   if (!src)
     error (EXIT_FAILURE, errno, "%s", _("cannot read system statistics"));
@@ -470,8 +494,16 @@ main (int argc, char **argv)
     error (EXIT_FAILURE, 0, "%s",
            _("the display needs a terminal; use --once for a text report"));
 
-  struct app a;
-  app_init (&a, src, interval, (size_t) page, theme, demo);
+  static struct app a;
+  app_init (&a, src, &set, demo);
+  snprintf (a.config_path, sizeof a.config_path, "%s", config);
+  if (log_path)
+    {
+      snprintf (a.log_path, sizeof a.log_path, "%s", log_path);
+      int err = log_start (&a.log, log_path, &a);
+      if (err)
+        error (EXIT_FAILURE, err, _("cannot log to %s"), log_path);
+    }
   int sig = app_run (&a);
   app_fini (&a);
   source_free (src);

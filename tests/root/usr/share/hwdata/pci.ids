@@ -1,0 +1,7 @@
+# A few lines of the PCI ID database, for the tests.
+1002  Advanced Micro Devices, Inc. [AMD/ATI]
+	73ff  Navi 23 [Radeon RX 6600/6600 XT/6600M]
+8086  Intel Corporation
+	9bc5  CometLake-S GT2 [UHD Graphics 630]
+10de  NVIDIA Corporation
+	2184  TU116 [GeForce GTX 1660]

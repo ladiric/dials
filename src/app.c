@@ -47,6 +47,9 @@
 enum { HISTORY = 3600 };
 enum { MIN_W = 60, MIN_H = 16 };
 
+/* Narrower than this, only the active panel is shown.  */
+enum { SPLIT_MIN_W = 80 };
+
 /* Intervals that F3 and F4 step through, in seconds.  */
 static const double steps[] = { 0.25, 0.5, 1, 2, 3, 5, 10, 30, 60 };
 
@@ -54,14 +57,20 @@ static volatile sig_atomic_t got_signal;
 static int key_ctrl_pgdn, key_ctrl_pgup;
 
 void
-app_init (struct app *a, struct source *src, double interval, size_t page,
-          int theme, bool demo)
+app_init (struct app *a, struct source *src, const struct settings *s,
+          bool demo)
 {
   memset (a, 0, sizeof *a);
   a->src = src;
-  a->interval = interval;
-  a->page = page;
-  a->theme = theme;
+  a->interval = s->interval;
+  a->panels[0] = s->panels[0];
+  a->panels[1] = s->panels[1];
+  a->active = s->active;
+  a->split = s->split;
+  a->page = a->panels[a->active];
+  a->theme = s->theme;
+  a->proc_sort = (enum proc_sort) s->sort;
+  a->proc_tree = s->tree;
   a->demo = demo;
   a->timer_fd = -1;
   source_info (src, &a->info);
@@ -85,6 +94,7 @@ app_fini (struct app *a)
   cpu_close (&a->cpu);
   memory_close (&a->mem);
   disks_close (&a->disks);
+  log_stop (&a->log);
   gpus_close (&a->gpus);
   net_close (&a->net);
   procs_close (&a->procs);
@@ -95,20 +105,28 @@ app_fini (struct app *a)
 void
 app_sample (struct app *a)
 {
-  void (*shown) (struct app *, struct canvas *, struct rect)
-    = pages[a->page].draw;
   source_sample (a->src, &a->cur);
   cpu_sample (&a->cpu);
   /* Scanning processes and file systems costs more, so it is done only
      while they are shown.  */
-  memory_sample (&a->mem, shown == page_memory_draw);
-  disks_sample (&a->disks, shown == page_disk_draw);
-  gpus_sample (&a->gpus, shown == page_gpu_draw);
-  net_sample (&a->net, shown == page_net_draw);
-  if (shown == page_proc_draw)
+  memory_sample (&a->mem, app_shows (a, page_memory_draw));
+  disks_sample (&a->disks, app_shows (a, page_disk_draw));
+  gpus_sample (&a->gpus, app_shows (a, page_gpu_draw));
+  net_sample (&a->net, app_shows (a, page_net_draw));
+  if (app_shows (a, page_proc_draw))
     procs_sample (&a->procs);
   sensors_sample (&a->sensors);
   power_sample (&a->power);
+  if (a->log.f)
+    {
+      int err = log_write (&a->log, a);
+      if (err)
+        {
+          app_message (a, true, _("Stopped logging: %s: %s"), a->log.path,
+                       strerror (err));
+          log_stop (&a->log);
+        }
+    }
   a->dirty = true;
 }
 
@@ -133,16 +151,104 @@ arm_timer (struct app *a, double first)
   timerfd_settime (a->timer_fd, 0, &its, NULL);
 }
 
+bool
+app_shows (const struct app *a,
+           void (*draw) (struct app *, struct canvas *, struct rect))
+{
+  return pages[a->panels[a->active]].draw == draw
+    || (a->split && pages[a->panels[!a->active]].draw == draw);
+}
+
 void
 app_set_page (struct app *a, size_t page)
 {
   if (page < page_count && page != a->page)
     {
-      a->page = page;
+      bool had_procs = app_shows (a, page_proc_draw);
+      a->page = a->panels[a->active] = page;
       /* Show the processes at once instead of after the next sample.  */
-      if (pages[page].draw == page_proc_draw)
+      if (!had_procs && app_shows (a, page_proc_draw))
         procs_sample (&a->procs);
     }
+  a->dirty = true;
+}
+
+void
+app_toggle_split (struct app *a)
+{
+  bool had_procs = app_shows (a, page_proc_draw);
+  a->split = !a->split;
+  if (!had_procs && app_shows (a, page_proc_draw))
+    procs_sample (&a->procs);
+  a->dirty = true;
+}
+
+void
+app_toggle_log (struct app *a)
+{
+  if (a->log.f)
+    {
+      app_message (a, false, _("Stopped logging to %s."), a->log.path);
+      log_stop (&a->log);
+      return;
+    }
+  char path[4096];
+  if (a->log_path[0])
+    snprintf (path, sizeof path, "%s", a->log_path);
+  else
+    {
+      time_t now = time (NULL);
+      struct tm tm;
+      localtime_r (&now, &tm);
+      strftime (path, sizeof path, "dials-%Y%m%d-%H%M%S.csv", &tm);
+    }
+  int err = log_start (&a->log, path, a);
+  if (err)
+    app_message (a, true, _("Cannot log to %s: %s"), path, strerror (err));
+  else
+    app_message (a, false, _("Logging to %s."), path);
+}
+
+void
+app_save_setup (struct app *a)
+{
+  if (!a->config_path[0])
+    {
+      app_message (a, true, "%s",
+                   _("There is no home directory to save settings in."));
+      return;
+    }
+  struct settings s = {
+    .interval = a->interval, .theme = a->theme,
+    .panels = { a->panels[0], a->panels[1] }, .active = a->active,
+    .split = a->split, .sort = a->proc_sort, .tree = a->proc_tree
+  };
+  int err = settings_save (&s, a->config_path);
+  if (err)
+    app_message (a, true, _("Cannot save settings in %s: %s"),
+                 a->config_path, strerror (err));
+  else
+    app_message (a, false, _("Settings saved in %s."), a->config_path);
+}
+
+void
+app_other_panel (struct app *a)
+{
+  if (a->split)
+    {
+      a->active = !a->active;
+      a->page = a->panels[a->active];
+    }
+  a->dirty = true;
+}
+
+void
+app_swap_panels (struct app *a)
+{
+  size_t t = a->panels[0];
+  a->panels[0] = a->panels[1];
+  a->panels[1] = t;
+  a->page = a->panels[a->active];
   a->dirty = true;
 }
 
@@ -235,8 +341,19 @@ render (struct app *a)
                 w, h, MIN_W, MIN_H);
       canvas_put_center (cv, h / 2, 0, w, msg, ST_WARN);
     }
-  else
+  else if (!a->split || w < SPLIT_MIN_W)
     pages[a->page].draw (a, cv, (struct rect) { 1, 0, h - 2, w });
+  else
+    {
+      /* Two panels.  The active one's title stands out, as the panel
+         that keys go to.  */
+      struct rect r[2] = { { 1, 0, h - 2, w / 2 },
+                           { 1, w / 2, h - 2, w - w / 2 } };
+      for (int i = 0; i < 2; i++)
+        pages[a->panels[i]].draw (a, cv, r[i]);
+      const struct rect *ar = &r[a->active];
+      canvas_title (cv, ar->y, ar->x, ar->w, _(pages[a->page].title), ST_SEL);
+    }
   ui_draw_menubar (a);
   ui_draw_fkeys (a);
   ui_draw_overlay (a);
@@ -334,6 +451,18 @@ handle_key (struct app *a, int ch)
       break;
     case 't':
       app_next_theme (a);
+      break;
+    case 's':
+      app_toggle_split (a);
+      break;
+    case 'l':
+      app_toggle_log (a);
+      break;
+    case '\t':
+      app_other_panel (a);
+      break;
+    case 21:			/* Ctrl-U */
+      app_swap_panels (a);
       break;
     default:
       if (ch >= '1' && ch <= '9')

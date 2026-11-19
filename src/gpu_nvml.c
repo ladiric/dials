@@ -99,6 +99,7 @@ struct nvml
 
   int count;
   nvml_device dev[GPU_MAX];
+  char version[96];		/* Driver version.  */
   /* Values that do not change, read once.  */
   double limit_w[GPU_MAX], clock_sm_max[GPU_MAX], clock_mem_max[GPU_MAX];
   /* Per GPU: the newest process sample seen, and the last known use
@@ -130,7 +131,7 @@ find (void *lib, const char *const *names)
 #define FIND(...) find (n->lib, (const char *const[]) { __VA_ARGS__, NULL })
 
 static bool
-nvml_open (void **priv, char *driver, size_t dsize, char *err, size_t esize)
+nvml_open (void **priv, char *err, size_t esize)
 {
   struct nvml *n = xcalloc (1, sizeof *n);
 
@@ -219,7 +220,9 @@ nvml_open (void **priv, char *driver, size_t dsize, char *err, size_t esize)
 
   char version[80];
   if (get_driver && get_driver (version, sizeof version) == NVML_SUCCESS)
-    snprintf (driver, dsize, "%s", version);
+    snprintf (n->version, sizeof n->version, "NVIDIA %s", version);
+  else
+    snprintf (n->version, sizeof n->version, "%s", "NVIDIA");
 
   *priv = n;
   return true;
@@ -233,7 +236,8 @@ nvml_count (void *priv)
 }
 
 static void
-nvml_name (void *priv, int i, char *buf, size_t size)
+nvml_describe (void *priv, int i, char *buf, size_t size, char *driver,
+               size_t dsize)
 {
   struct nvml *n = priv;
   char name[96];
@@ -241,6 +245,7 @@ nvml_name (void *priv, int i, char *buf, size_t size)
     snprintf (buf, size, "%s", name);
   else
     snprintf (buf, size, "%s", "NVIDIA GPU");
+  snprintf (driver, dsize, "%s", n->version);
 }
 
 /* Store the command name of process PID in BUF.  */
@@ -439,6 +444,7 @@ nvml_sample (void *priv, int i, bool details, struct gpu_sample *s)
     s->dec = v;
   if (n->pstate && n->pstate (d, &ps) == NVML_SUCCESS && ps >= 0 && ps <= 15)
     s->pstate = ps;
+  s->procs_known = n->compute_procs || n->graphics_procs;
   read_procs (n, i, s);
 }
 
@@ -454,5 +460,5 @@ nvml_close (void *priv)
 }
 
 const struct gpu_backend gpu_nvml_backend = {
-  nvml_open, nvml_count, nvml_name, nvml_sample, nvml_close
+  nvml_open, nvml_count, nvml_describe, nvml_sample, nvml_close
 };

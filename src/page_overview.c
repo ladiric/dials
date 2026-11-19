@@ -62,7 +62,7 @@ page_overview_draw (struct app *a, struct canvas *cv, struct rect r)
   char kernel[200], up[64], load[64], ncpu[16], sampling[64];
 
   canvas_box (cv, r, ST_FRAME, true);
-  canvas_title (cv, r.y, r.x, r.w, _(pages[a->page].title), ST_TITLE);
+  canvas_title (cv, r.y, r.x, r.w, _("Overview"), ST_TITLE);
 
   int x = r.x + 2, w = r.w - 4, y = r.y + 1;
   int bottom = r.y + r.h - 1;

@@ -80,6 +80,41 @@ act_theme (struct app *a, int arg)
 }
 
 static void
+act_split (struct app *a, int arg)
+{
+  (void) arg;
+  app_toggle_split (a);
+}
+
+static void
+act_log (struct app *a, int arg)
+{
+  (void) arg;
+  app_toggle_log (a);
+}
+
+static void
+act_save (struct app *a, int arg)
+{
+  (void) arg;
+  app_save_setup (a);
+}
+
+static void
+act_other (struct app *a, int arg)
+{
+  (void) arg;
+  app_other_panel (a);
+}
+
+static void
+act_swap (struct app *a, int arg)
+{
+  (void) arg;
+  app_swap_panels (a);
+}
+
+static void
 act_mode (struct app *a, int arg)
 {
   a->mode = (enum app_mode) arg;
@@ -130,6 +165,16 @@ menu_build (struct app *a, int menu, struct menu_item *items)
       add_item (&items[n++], _("Clear history"), "F7", act_reset, 0);
       snprintf (buf, sizeof buf, _("Theme: %s"), theme_name (a->theme));
       add_item (&items[n++], buf, "t", act_theme, 0);
+      add_item (&items[n++], a->split ? _("One panel") : _("Two panels"), "s",
+                act_split, 0);
+      add_item (&items[n++], a->log.f ? _("Stop logging") : _("Start logging"),
+                "l", act_log, 0);
+      add_item (&items[n++], _("Save setup"), "", act_save, 0);
+      if (a->split)
+        {
+          add_item (&items[n++], _("Other panel"), "Tab", act_other, 0);
+          add_item (&items[n++], _("Swap panels"), "Ctrl-U", act_swap, 0);
+        }
       add_item (&items[n++], _("Quit"), "F10", act_quit, 0);
       break;
 
@@ -220,8 +265,9 @@ ui_draw_menubar (struct app *a)
   fmt_interval (ival, sizeof ival, a->interval);
   const char *sep = cv->utf8 ? " │ " : " | ";
   const char *state = a->paused ? _("PAUSED") : a->demo ? _("DEMO") : _("LIVE");
-  snprintf (shorter, sizeof shorter, " %s%s%s%s%s ",
-            state, sep, ival, sep, hms);
+  snprintf (shorter, sizeof shorter, " %s%s%s%s%s%s%s ",
+            state, a->log.f ? sep : "", a->log.f ? _("REC") : "",
+            sep, ival, sep, hms);
   snprintf (full, sizeof full, " %s%s%s", _(pages[a->page].title), sep,
             shorter + 1);
 
@@ -334,6 +380,9 @@ draw_help (struct app *a)
     { "/", N_("Processes: filter by name or command") },
     { "Ctrl-PgUp/PgDn", N_("Previous or next page") },
     { "t", N_("Next color theme") },
+    { "s", N_("Show one panel or two") },
+    { "l", N_("Start or stop logging to a file") },
+    { "Tab  Ctrl-U", N_("Other panel; swap the panels") },
   };
   enum { N = ARRAY_CARDINALITY (keys) };
   char buf[N][200];

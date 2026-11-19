@@ -32,6 +32,7 @@ gpu_sample_clear (struct gpu_sample *s)
   s->power = s->power_limit = NAN;
   s->clock_sm = s->clock_sm_max = s->clock_mem = s->clock_mem_max = NAN;
   s->pstate = -1;
+  s->procs_known = false;
   s->nproc = 0;
 }
 
@@ -39,40 +40,60 @@ void
 gpus_open (struct gpus *g, bool demo, size_t history)
 {
   memset (g, 0, sizeof *g);
-  if (sysroot_set () && !demo)
-    {
-      snprintf (g->error, sizeof g->error, "%s",
-                _("GPUs are not read from a copy of /proc and /sys"));
-      return;
-    }
-  const struct gpu_backend *be = demo ? &gpu_demo_backend : &gpu_nvml_backend;
-  if (!be->open (&g->priv, g->driver, sizeof g->driver,
-                 g->error, sizeof g->error))
-    return;
 
-  int n = be->count (g->priv);
-  if (n <= 0)
+  /* A copy of /sys says nothing to NVML, so only the kernel's drivers
+     are read from it.  */
+  const struct gpu_backend *wanted[GPU_BACKENDS];
+  int nwanted = 0;
+  if (demo)
+    wanted[nwanted++] = &gpu_demo_backend;
+  else
     {
-      snprintf (g->error, sizeof g->error, "%s", _("no NVIDIA GPU found"));
-      be->close (g->priv);
-      g->priv = NULL;
-      return;
+      if (!sysroot_set ())
+        wanted[nwanted++] = &gpu_nvml_backend;
+      wanted[nwanted++] = &gpu_drm_backend;
     }
-  if (n > GPU_MAX)
-    n = GPU_MAX;
 
-  g->be = be;
-  g->count = n;
-  for (int i = 0; i < n; i++)
+  for (int b = 0; b < nwanted; b++)
     {
-      struct gpu_dev *d = &g->dev[i];
-      be->name (g->priv, i, d->name, sizeof d->name);
-      gpu_sample_clear (&d->cur);
-      metric_init (&d->temp, history);
-      metric_init (&d->util, history);
-      metric_init (&d->mem, history);
-      metric_init (&d->power, history);
+      char err[160] = "";
+      void *priv;
+      if (!wanted[b]->open (&priv, err, sizeof err))
+        {
+          /* Keep the first reason, which is NVML's.  */
+          if (!g->error[0])
+            snprintf (g->error, sizeof g->error, "%s", err);
+          continue;
+        }
+      int n = wanted[b]->count (priv);
+      if (n <= 0)
+        {
+          wanted[b]->close (priv);
+          continue;
+        }
+      int k = g->nbackends++;
+      g->backends[k].be = wanted[b];
+      g->backends[k].priv = priv;
+      for (int i = 0; i < n && g->count < GPU_MAX; i++)
+        {
+          struct gpu_dev *d = &g->dev[g->count++];
+          d->backend = k;
+          d->index = i;
+          wanted[b]->describe (priv, i, d->name, sizeof d->name,
+                               d->driver, sizeof d->driver);
+          gpu_sample_clear (&d->cur);
+          metric_init (&d->temp, history);
+          metric_init (&d->util, history);
+          metric_init (&d->mem, history);
+          metric_init (&d->power, history);
+        }
     }
+  if (g->count == 0 && !g->error[0])
+    snprintf (g->error, sizeof g->error, "%s", _("no GPU found"));
+
+  /* Figures worked out from counters need a first reading.  */
+  gpus_sample (g, false);
+  gpus_clear_history (g);
 }
 
 void
@@ -82,7 +103,8 @@ gpus_sample (struct gpus *g, bool details)
     {
       struct gpu_dev *d = &g->dev[i];
       gpu_sample_clear (&d->cur);
-      g->be->sample (g->priv, i, details, &d->cur);
+      g->backends[d->backend].be->sample (g->backends[d->backend].priv,
+                                          d->index, details, &d->cur);
       metric_push (&d->temp, d->cur.temp);
       metric_push (&d->util, d->cur.util);
       metric_push (&d->mem, d->cur.mem_used);
@@ -113,9 +135,8 @@ gpus_close (struct gpus *g)
       metric_free (&g->dev[i].mem);
       metric_free (&g->dev[i].power);
     }
-  if (g->be)
-    g->be->close (g->priv);
-  g->be = NULL;
-  g->priv = NULL;
+  for (int b = 0; b < g->nbackends; b++)
+    g->backends[b].be->close (g->backends[b].priv);
+  g->nbackends = 0;
   g->count = 0;
 }

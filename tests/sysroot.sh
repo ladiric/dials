@@ -17,7 +17,8 @@ Temperature:     55C
 Memory:          6.1 / 15.6 GiB (39%), 9.5 GiB available
 Swap:            1.1 / 7.8 GiB (15%)
 Processes:       2 (1 running), 5 threads
-GPU:             GPUs are not read from a copy of /proc and /sys
+GPU 0:           AMD Radeon RX 6600/6600 XT/6600M, 61C, 37%, 2.0 / 8.0 GiB, 87 / 160 W
+GPU 1:           Intel UHD Graphics 630, n/a, n/a, n/a, n/a
 Disk nvme0n1:    Test NVMe Drive, 512 GB, solid state, 41C
 Disk sda:        Test Hard Disk, 2.0 TB, hard disk, 33C
 /:               ext4, /dev/nvme0n1p2

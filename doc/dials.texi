@@ -53,6 +53,8 @@ This manual is for Dials (version @value{VERSION}, @value{UPDATED}).
 * The screen::          Menu bar, pages and function keys.
 * Pages::               What each page shows.
 * Keys::                Keyboard commands.
+* Settings::            Keeping a setup between runs.
+* Logging::             Writing measurements to a file.
 * Reporting bugs::      Sending bug reports.
 * GNU Free Documentation License::  Copying this manual.
 * Index::
@@ -110,6 +112,10 @@ Use the color theme @var{name}: @samp{classic} (white on dark navy, the
 default), @samp{blue} (white on the terminal's blue), @samp{dark} or
 @samp{mono}.  Terminals without color always use @samp{mono}.
 
+@item --log=@var{file}
+@opindex --log
+Write each sample to @var{file} from the start.  @xref{Logging}.
+
 @item --once
 @opindex --once
 Print one plain-text report on standard output and exit, without
@@ -141,7 +147,14 @@ simulated, the sampling interval and the time.
 
 The bottom line lists what the function keys do.
 
-Between them is the current page.  Graphs scroll from right to left,
+Between them is the current page, or two pages side by side: press
+@kbd{s} to show two panels or one.  Keys act on the active panel,
+whose title is highlighted; @key{TAB} makes the other panel active
+and @kbd{C-u} swaps them.  The page keys choose the active panel's
+page.  On a screen narrower than 80 columns only the active panel is
+shown.
+
+Graphs scroll from right to left,
 with the newest sample on the right; the label on the bottom of a
 graph tells how much time it spans.  Bars and graphs are green below
 60% of their limit, yellow below 85% and red above.
@@ -231,10 +244,14 @@ ten processes with the most memory.
 @cindex graphics processors
 @cindex NVIDIA
 
-The GPU page shows NVIDIA graphics processors.  It reads them through
-NVML, the monitoring library that comes with the NVIDIA driver; Dials
-loads the library when it starts, if it is installed, and the page
-says why when there is nothing to show.
+The GPU page shows graphics processors from NVIDIA, AMD and Intel.
+NVIDIA's are read through NVML, the monitoring library that comes with
+the NVIDIA driver; Dials loads the library when it starts, if it is
+installed.  The others are read from the kernel's drivers:
+@code{amdgpu} gives about as much as NVML does, while @code{i915} and
+@code{xe} give the frequency and, from the time the GPU spent idle,
+how busy it was.  Names come from the PCI ID database, when it is
+installed.  The page says why when there is nothing to show.
 
 The list at the top has one line per GPU, with its temperature,
 utilization, video memory, power, fan speed and a status.  The status
@@ -247,7 +264,7 @@ speed and the use of the video encoder and decoder.  Then come blocks
 with the current temperature, utilization, video memory and power,
 each with the lowest, mean and highest value seen, graphs of their
 history, and the processes using the GPU with their share of its time
-and of its memory.
+and of its memory.  Only NVML lists the processes.
 
 On a small screen the blocks are left out first, then the processes.
 
@@ -402,7 +419,66 @@ Commands of the Processes page.  @xref{Processes page}.
 Go to the previous or next page.
 @item t
 Switch to the next color theme.
+@item s
+Show two panels side by side, or one.
+@item @key{TAB}
+@itemx C-u
+Make the other panel active; swap the panels.
+@item l
+Start or stop logging.  @xref{Logging}.
 @end table
+
+@node Settings
+@chapter Settings
+@cindex settings
+@cindex configuration file
+@cindex @file{dials.conf}
+
+Choose @samp{Save setup} in the Options menu to keep the sampling
+interval, the color theme, the panels and their pages, and how the
+Processes page sorts its list, for the next time Dials starts.  They
+are written to @file{dials/dials.conf} under the directory named by
+the environment variable @env{XDG_CONFIG_HOME}, or under
+@file{~/.config} if it is not set.  Options given on the command line
+take precedence.
+
+The file holds lines of @samp{@var{name} = @var{value}}, which may be
+edited; lines starting with @samp{#} are ignored, and Dials names
+those it does not understand.  For example:
+
+@example
+interval = 2
+theme = classic
+left-page = overview
+right-page = gpu
+active-panel = left
+two-panels = yes
+process-sort = cpu
+process-tree = no
+@end example
+
+@node Logging
+@chapter Logging
+@cindex logging
+@cindex CSV
+@cindex JSON
+
+Press @kbd{l}, or choose @samp{Start logging} in the Options menu, to
+write each sample to a file; the menu bar shows @samp{REC} meanwhile.
+The file is the one given with @option{--log}, or else a new file
+named after the date and time, such as
+@file{dials-20261119-142500.csv}, in the working directory.  A file
+that exists is added to.
+
+A file whose name ends in @file{.json} or @file{.jsonl} gets one JSON
+object per line; any other gets comma-separated values with a heading
+line.  Each line has the time, processor use, memory and swap in MiB,
+the load average, the temperature, utilization, memory and power of
+each GPU, the bytes read and written per second on each disk, and the
+bytes received and sent per second on each hardware network
+interface.  Numbers always use @samp{.} as the decimal point.  Values
+that cannot be read are left empty, or are @code{null} in JSON.  The
+columns are fixed when logging starts.
 
 @node Reporting bugs
 @chapter Reporting bugs

@@ -51,19 +51,21 @@ struct gpu_sample
   double power, power_limit;	/* Watts.  */
   double clock_sm, clock_sm_max, clock_mem, clock_mem_max;	/* MHz.  */
   int pstate;			/* Performance state 0-15, or -1.  */
+  bool procs_known;		/* Whether the driver lists processes.  */
   int nproc;
   struct gpu_proc proc[GPU_PROC_MAX];
 };
 
-/* A kind of GPU: NVIDIA through NVML, or simulated.  AMD and Intel
-   backends will follow the same interface.  */
+/* A source of GPUs: NVIDIA's NVML library, the kernel's DRM drivers
+   for AMD and Intel, or simulated ones.  */
 struct gpu_backend
 {
   /* Start up.  On failure, describe why in ERR and return false.  */
-  bool (*open) (void **priv, char *driver, size_t dsize,
-                char *err, size_t esize);
+  bool (*open) (void **priv, char *err, size_t esize);
   int (*count) (void *priv);
-  void (*name) (void *priv, int i, char *buf, size_t size);
+  /* Store the name of GPU I and a description of its driver.  */
+  void (*describe) (void *priv, int i, char *name, size_t nsize,
+                    char *driver, size_t dsize);
   /* Read GPU I into OUT, which is cleared first.  If DETAILS, read
      everything the GPU page shows, its processes included; else only
      temperature, utilization, memory and power.  */
@@ -72,22 +74,31 @@ struct gpu_backend
 };
 
 extern const struct gpu_backend gpu_nvml_backend;
+extern const struct gpu_backend gpu_drm_backend;
 extern const struct gpu_backend gpu_demo_backend;
+
+enum { GPU_BACKENDS = 2 };
 
 struct gpu_dev
 {
   char name[96];
+  char driver[64];
+  int backend;			/* Index into gpus.backends.  */
+  int index;			/* The GPU's number in its backend.  */
   struct gpu_sample cur;
   struct metric temp, util, mem, power;	/* History, in the units above.  */
 };
 
 struct gpus
 {
-  const struct gpu_backend *be;
-  void *priv;
+  int nbackends;
+  struct
+  {
+    const struct gpu_backend *be;
+    void *priv;
+  } backends[GPU_BACKENDS];
   int count;
   bool procs_valid;		/* Whether the last sample read details.  */
-  char driver[64];		/* Driver version, if known.  */
   char error[160];		/* Why there are no GPUs, if there are none.  */
   struct gpu_dev dev[GPU_MAX];
 };

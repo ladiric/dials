@@ -12,7 +12,8 @@ dials_SOURCES = \
   cpu.c cpu.h \
   disk.c disk.h \
   gettext.h \
-  gpu.c gpu.h gpu_demo.c gpu_nvml.c \
+  log.c log.h \
+  gpu.c gpu.h gpu_demo.c gpu_drm.c gpu_nvml.c \
   main.c \
   memory.c memory.h \
   metric.c metric.h \
@@ -23,6 +24,7 @@ dials_SOURCES = \
   page_overview.c page_power.c page_proc.c page_sensors.c \
   pages.c pages.h \
   sensors.c sensors.h \
+  settings.c settings.h \
   source.c source.h source_demo.c source_linux.c \
   system.h \
   theme.c theme.h \

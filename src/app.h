@@ -26,12 +26,14 @@
 #include "cpu.h"
 #include "disk.h"
 #include "gpu.h"
+#include "log.h"
 #include "memory.h"
 #include "metric.h"
 #include "net.h"
 #include "power.h"
 #include "procs.h"
 #include "sensors.h"
+#include "settings.h"
 #include "source.h"
 
 enum app_mode
@@ -99,20 +101,26 @@ struct app
   char proc_filter[128];	/* Show only processes matching this.  */
   struct prompt prompt;
   struct choice choice;
+  struct logger log;
+  char log_path[4096];		/* From --log, or "".  */
+  char config_path[4096];	/* The settings file, or "".  */
   char message[200];		/* A short note in the menu bar.  */
   bool message_error;
   double message_until;		/* When to stop showing it.  */
   double interval;		/* Seconds between samples.  */
   bool paused, quit, dirty, demo;
-  size_t page;			/* Index into pages[].  */
+  size_t page;			/* The active panel's page, in pages[].  */
+  size_t panels[2];		/* The pages of the left and right panels.  */
+  int active;			/* The panel that keys go to: 0 or 1.  */
+  bool split;			/* Whether both panels are shown.  */
   int theme;
   enum app_mode mode;
   int menu, menu_item;		/* Open menu and its selected item.  */
   int timer_fd;
 };
 
-void app_init (struct app *a, struct source *src, double interval,
-               size_t page, int theme, bool demo);
+void app_init (struct app *a, struct source *src, const struct settings *s,
+               bool demo);
 void app_fini (struct app *a);
 
 /* Run the full-screen interface.  Return the number of the signal
@@ -120,7 +128,24 @@ void app_fini (struct app *a);
 int app_run (struct app *a);
 
 void app_sample (struct app *a);
+
+/* Show PAGE in the active panel.  */
 void app_set_page (struct app *a, size_t page);
+
+/* Whether a page drawn by DRAW is on the screen.  */
+bool app_shows (const struct app *a,
+                void (*draw) (struct app *, struct canvas *, struct rect));
+
+void app_toggle_split (struct app *a);
+
+/* Start logging, to the --log file or a new one in the working
+   directory, or stop it.  */
+void app_toggle_log (struct app *a);
+
+/* Write the current settings to the settings file.  */
+void app_save_setup (struct app *a);
+void app_other_panel (struct app *a);
+void app_swap_panels (struct app *a);
 
 /* Sample less often if DIR > 0, more often if DIR < 0.  */
 void app_step_interval (struct app *a, int dir);

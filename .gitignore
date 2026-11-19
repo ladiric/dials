@@ -45,3 +45,6 @@ Makefile
 /doc/*.ops
 /configure~
 *~
+/tests/settings.d/
+/dials-*.csv
+/dials-*.json

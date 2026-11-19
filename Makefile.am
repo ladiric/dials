@@ -12,11 +12,14 @@ TESTS = \
   tests/help.sh \
   tests/options.sh \
   tests/once.sh \
+  tests/settings.sh \
   tests/sysroot.sh
 TEST_EXTENSIONS = .sh
 SH_LOG_COMPILER = $(SHELL)
 AM_TESTS_ENVIRONMENT = \
   DIALS='$(abs_top_builddir)/src/dials$(EXEEXT)'; export DIALS; \
+  XDG_CONFIG_HOME='$(abs_top_builddir)/tests/no-such-dir'; \
+  export XDG_CONFIG_HOME; \
   LC_ALL=C; export LC_ALL;
 
 EXTRA_DIST = bootstrap README-hacking $(TESTS) tests/root
