@@ -1,0 +1,40 @@
+Building Dials from the source repository
+==========================================
+
+These notes are for building Dials from a checkout of its source
+repository.  To build from a release tarball, see README and INSTALL.
+
+A checkout does not contain the generated files that a release
+tarball has, so building it needs these tools as well:
+
+  GNU Autoconf    2.71 or later
+  GNU Automake    1.16 or later
+  GNU gettext     0.21 or later (for autopoint)
+  GNU Texinfo     (for makeinfo)
+  help2man        (for the manual page)
+  pkg-config
+
+Then run:
+
+  ./bootstrap
+  ./configure --enable-gcc-warnings
+  make
+  make check
+
+The --enable-gcc-warnings option turns on many compiler warnings and
+treats them as errors.  Please use it while changing the code.
+
+'make distcheck' builds a release tarball and checks that it builds,
+installs and passes its tests.  Checking the printed manual also needs
+texi2dvi from GNU Texinfo and a TeX installation.
+
+Please follow the GNU Coding Standards
+<https://www.gnu.org/prep/standards/> in new code.
+
+========================================================================
+
+Copyright (C) 2026 Richard L.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.

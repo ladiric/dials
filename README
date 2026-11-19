@@ -1,0 +1,42 @@
+This is the README file for the Dials distribution.
+
+Dials shows how the resources of a GNU/Linux system are being used, as
+they change.  It runs full screen in a terminal: a menu bar at the
+top, the function keys at the bottom, and between them one page for
+each part of the system:
+
+  Overview    host, uptime, load; processor, memory and swap use
+  CPU         use per processor core, frequency, temperature
+  Memory      how memory is used, swap, memory pressure
+  GPU         graphics processors and the processes using them
+  Disks       throughput and latency per device, file system space
+  Network     traffic, errors and addresses per interface
+  Processes   a table of processes that can be sorted and filtered
+  Sensors     temperatures, fan speeds and voltages
+  Power       battery state and power use
+
+This is an early version: so far only the Overview page shows
+measurements.
+
+Dials reads its measurements from /proc and /sys.  It needs a C
+compiler, pkg-config and the wide-character curses library (ncursesw)
+to build.
+
+  See the file ./INSTALL for building and installation instructions,
+  and the file ./README-hacking for building from the source repository.
+
+After installation, 'info dials' shows the manual and 'dials --help'
+summarizes the command-line options.  Press F1 while Dials runs for
+the list of keys.
+
+Dials is free software.  See the file COPYING for copying conditions.
+The manual may be copied under the terms of the GNU Free Documentation
+License; see the manual itself.
+
+========================================================================
+
+Copyright (C) 2026 Richard L.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
