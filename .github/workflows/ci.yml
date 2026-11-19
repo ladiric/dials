@@ -29,7 +29,7 @@ jobs:
       matrix:
         nvml: [no, yes]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The release tarball's ChangeLog is made from the history.
           fetch-depth: 0
