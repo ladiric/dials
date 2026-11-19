@@ -1,0 +1,58 @@
+# Build and test every change.
+# Copyright (C) 2026 Richard L.
+#
+# This file is part of Dials, distributed under the GNU General
+# Public License, version 3 or later.  See COPYING.
+
+name: CI
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+    branches: [develop, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test (NVML ${{ matrix.nvml }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        nvml: [no, yes]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The release tarball's ChangeLog is made from the history.
+          fetch-depth: 0
+
+      - uses: ./.github/actions/prepare
+
+      - name: Configure
+        run: ./configure --enable-gcc-warnings --enable-nvml=${{ matrix.nvml }}
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Test
+        run: make check
+
+      - name: Show test logs
+        if: failure()
+        run: cat test-suite.log tests/*.log || true
+
+      - name: Check the sources
+        if: matrix.nvml == 'no'
+        run: make syntax-check
+
+      - name: Check the release tarball
+        if: matrix.nvml == 'no'
+        run: make distcheck

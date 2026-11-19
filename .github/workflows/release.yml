@@ -1,0 +1,103 @@
+# Publish a release when master gets a version that has none yet.
+# Copyright (C) 2026 Richard L.
+#
+# This file is part of Dials, distributed under the GNU General
+# Public License, version 3 or later.  See COPYING.
+#
+# To make a release, set the version in AC_INIT in configure.ac, give
+# the top section of NEWS that version, the date and the release type,
+# as in
+#
+#   * Noteworthy changes in release 0.1.0 (2026-11-20) [beta]
+#
+# and merge into master.  A merge that leaves the version as it was
+# makes no release.  Alpha and beta releases are marked as
+# prereleases.
+
+name: Release
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read the version
+        id: version
+        run: |
+          version=$(sed -n 's/^AC_INIT(\[Dials\], *\[\([^]]*\)\].*/\1/p' configure.ac)
+          if test -z "$version"; then
+            echo "::error file=configure.ac::cannot find the version in AC_INIT"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "::notice::Version $version is already released; nothing to do."
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check NEWS
+        if: steps.version.outputs.new == 'true'
+        id: news
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          re="^\* Noteworthy changes in release ${VERSION//./\\.} \(([0-9]{4}-[0-9]{2}-[0-9]{2})\) \[(alpha|beta|stable)\]$"
+          heading=$(sed -n 1,10p NEWS | grep -E "$re" || true)
+          if test -z "$heading"; then
+            echo "::error file=NEWS::the top section of NEWS must be headed"
+            echo "::error file=NEWS::'* Noteworthy changes in release $VERSION (YYYY-MM-DD) [alpha|beta|stable]'"
+            exit 1
+          fi
+          type=$(echo "$heading" | sed -E "s/$re/\2/")
+          echo "type=$type" >> "$GITHUB_OUTPUT"
+          # The section's text, up to the next release or the end notes,
+          # with its subheadings made into Markdown ones.
+          sed -n '/^\* Noteworthy changes in release /,$p' NEWS \
+            | sed '1d; /^\* Noteworthy changes in release /,$d; /^====/,$d' \
+            | sed 's/^\*\* /### /' \
+            > "$RUNNER_TEMP/notes.txt"
+
+      - uses: ./.github/actions/prepare
+        if: steps.version.outputs.new == 'true'
+
+      - name: Build and check the release tarball
+        if: steps.version.outputs.new == 'true'
+        run: |
+          ./configure
+          make -j"$(nproc)"
+          make check
+          make distcheck
+
+      - name: Publish the release
+        if: steps.version.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TYPE: ${{ steps.news.outputs.type }}
+        run: |
+          files="dials-$VERSION.tar.xz dials-$VERSION.tar.gz"
+          sha256sum $files > SHA256SUMS
+          prerelease=
+          test "$TYPE" = stable || prerelease=--prerelease
+          gh release create "v$VERSION" $files SHA256SUMS \
+            --target "$GITHUB_SHA" \
+            --title "Dials $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.txt" \
+            $prerelease

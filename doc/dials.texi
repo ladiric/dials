@@ -1,0 +1,661 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename dials.info
+@include version.texi
+@settitle Dials @value{VERSION}
+@defcodeindex op
+@syncodeindex op cp
+@c %**end of header
+
+@copying
+This manual is for Dials (version @value{VERSION}, @value{UPDATED}),
+a full-screen monitor of system resources.
+
+Copyright @copyright{} 2026 Richard L.
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
+Texts.  A copy of the license is included in the section entitled
+``GNU Free Documentation License''.
+@end quotation
+@end copying
+
+@dircategory System administration
+@direntry
+* Dials: (dials).               Monitor system resources in a terminal.
+@end direntry
+
+@titlepage
+@title Dials
+@subtitle A full-screen monitor of system resources
+@subtitle for version @value{VERSION}, @value{UPDATED}
+@author Richard L
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top
+@top Dials
+
+This manual is for Dials (version @value{VERSION}, @value{UPDATED}).
+@end ifnottex
+
+@menu
+* Overview::            What Dials does.
+* Invoking dials::      Command-line options.
+* The screen::          Menu bar, pages and function keys.
+* Pages::               What each page shows.
+* Keys::                Keyboard commands.
+* Settings::            Keeping a setup between runs.
+* Logging::             Writing measurements to a file.
+* Sources::             Where the measurements come from.
+* Reporting bugs::      Sending bug reports.
+* GNU Free Documentation License::  Copying this manual.
+* Index::
+@end menu
+
+@node Overview
+@chapter Overview
+@cindex overview
+
+Dials shows how busy a GNU/Linux system is, live, in a full-screen
+terminal interface in the style of the classic two-panel file
+managers.  Each subsystem has its own page: an overview, the
+processors, memory, graphics processors, disks, network, processes,
+hardware sensors and power.
+
+Dials reads its measurements from @file{/proc} and @file{/sys}.  It
+keeps the files it reads open and rereads them in place, so it uses
+very little of the processor time it measures.
+
+Dials needs a terminal of at least 80 columns and 24 lines to show a
+page comfortably; on a smaller one, parts of a page are left out.  A
+terminal and locale with UTF-8 give the best lines and bars; with
+others, Dials draws with plain characters.  With @option{--once},
+Dials prints a plain report instead, which suits scripts and remote
+sessions.
+
+This is an early version, and its pages may still change.
+
+@node Invoking dials
+@chapter Invoking @command{dials}
+@cindex invoking
+@cindex options
+
+@example
+dials [@var{option}]@dots{}
+@end example
+
+@table @option
+@item -d
+@itemx --demo
+@opindex --demo
+Show simulated data instead of this system's.  This is useful for
+trying the interface and for screenshots.
+
+@item -i @var{seconds}
+@itemx --interval=@var{seconds}
+@opindex --interval
+Take a sample every @var{seconds}, which may be a fraction from 0.1 to
+3600.  The default is 1.  Either @samp{.} or the locale's decimal
+point may be used, as in @samp{0.5} or @samp{0,5}.  While Dials runs,
+@kbd{-} and @kbd{+} step through 0.25, 0.5, 1, 2, 3, 5, 10, 30 and 60
+seconds.
+
+@item -p @var{name}
+@itemx --page=@var{name}
+@opindex --page
+Start on page @var{name}: one of @samp{overview}, @samp{cpu},
+@samp{memory}, @samp{gpu}, @samp{disk}, @samp{network},
+@samp{processes}, @samp{sensors} or @samp{power}.
+
+@item -t @var{name}
+@itemx --theme=@var{name}
+@opindex --theme
+Use the color theme @var{name}: @samp{classic} (white on dark navy, the
+default), @samp{blue} (white on the terminal's blue), @samp{dark} or
+@samp{mono}.  Terminals without color always use @samp{mono}.
+
+@item --log=@var{file}
+@opindex --log
+Write each sample to @var{file} from the start.  @xref{Logging}.
+
+@item --once
+@opindex --once
+Print one plain-text report on standard output and exit, without
+starting the full-screen interface.  Dials first takes two samples one
+interval apart, so that rates such as processor use can be computed.
+The report begins like this:
+
+@example
+Host:                  demo
+System:                Demo System 1.0
+Kernel:                6.0.0-demo x86_64
+Processor:             Demo CPU 16-Core Processor
+CPUs:                  16
+Uptime:                3 days, 04:12
+Load:                  1.32 0.35 0.13
+CPU:                   33% (user 24%, system 6%, I/O wait 1%)
+Memory:                10.1 / 32.0 GiB (31%), 21.9 GiB available
+@end example
+
+@noindent
+and goes on with each GPU, disk, file system, network interface,
+battery and power supply, and a summary of the sensors.  The labels
+are translated and the numbers follow the locale, so programs that
+read measurements should use a log instead (@pxref{Logging}).
+
+@item --sysroot=@var{dir}
+@opindex --sysroot
+Read @file{/proc} and @file{/sys} under @var{dir} instead of the
+running system's.  This is meant for testing with a saved copy of
+those files.  File system space and GPUs are not measured then, since
+they do not come from those files.
+
+@item --help
+@opindex --help
+Print a summary of the options and exit.
+
+@item --version
+@opindex --version
+Print the version number and licensing information and exit.
+@end table
+
+@menu
+* Exit status::         What the exit status means.
+* Environment::         Environment variables that Dials uses.
+* Privileges::          What needs root privileges.
+@end menu
+
+@node Exit status
+@section Exit status
+@cindex exit status
+
+Dials exits with status 0 when it ends normally, and with status 1
+when an option is wrong, when the system's measurements cannot be
+read, when the terminal cannot be used, or when its output cannot be
+written.
+
+@node Environment
+@section Environment
+@cindex environment variables
+
+@table @env
+@item TERM
+The terminal type, which tells Dials how to draw and how many colors
+it may use.  With fewer than eight colors, the @samp{mono} theme is
+used.
+
+@item LANG
+@itemx LC_ALL
+@itemx LC_MESSAGES
+@itemx LC_NUMERIC
+@itemx LC_CTYPE
+The language of messages and labels, the decimal point of the numbers
+shown, and whether the terminal uses UTF-8.  Files that Dials writes
+for programs, such as logs and the settings file, always use
+@samp{.} as the decimal point.
+
+@item XDG_CONFIG_HOME
+@itemx HOME
+Where the settings file is.  @xref{Settings}.
+@end table
+
+@node Privileges
+@section Privileges
+@cindex root privileges
+@cindex privileges
+
+Dials needs no special privileges, and it is best run as an ordinary
+user.  A few things depend on them:
+
+@itemize @bullet
+@item
+Most systems let only root read processor power from RAPL
+(@pxref{Power page}).
+@item
+Signals can be sent, and nice values raised, only for your own
+processes; lowering a nice value needs root privileges
+(@pxref{Processes page}).
+@end itemize
+
+@node The screen
+@chapter The screen
+@cindex screen layout
+
+The top line is the menu bar.  Press @kbd{F9} to open it; the right
+end shows the current page, whether sampling is live, paused or
+simulated, the sampling interval and the time.
+
+The bottom line lists what the function keys do.
+
+Between them is the current page, or two pages side by side: press
+@kbd{s} to show two panels or one.  Keys act on the active panel,
+whose title is highlighted; @key{TAB} makes the other panel active
+and @kbd{C-u} swaps them.  The page keys choose the active panel's
+page.  On a screen narrower than 80 columns only the active panel is
+shown.
+
+@cindex menus
+The menu bar has three menus.  @samp{Page} chooses the active panel's
+page.  @samp{Options} pauses sampling, makes it less or more frequent,
+clears the history, changes the color theme, shows one panel or two,
+starts or stops logging, saves the setup (@pxref{Settings}), makes the
+other panel active, swaps the panels and quits.  @samp{Help} lists the
+keys and tells which version of Dials is running.
+
+@cindex graphs
+@cindex colors
+Graphs scroll from right to left,
+with the newest sample on the right; the label on the bottom of a
+graph tells how much time it spans.  Bars and graphs are green below
+60% of their limit, yellow below 85% and red above.
+
+@node Pages
+@chapter Pages
+@cindex pages
+
+@menu
+* Overview page::       The whole system at a glance.
+* CPU page::            Processors.
+* Memory page::         Memory and swap.
+* GPU page::            Graphics processors.
+* Disks page::          Disks and file systems.
+* Network page::        Interfaces and connections.
+* Processes page::      The running processes.
+* Sensors page::        Temperatures, fans and voltages.
+* Power page::          Batteries and power use.
+@end menu
+
+@node Overview page
+@section The Overview page
+@cindex Overview page
+
+The top of the page names the host, the operating system, the kernel
+and the processor, with the uptime, the load averages, the number of
+processors and the sampling interval.
+
+Below are meters for processor, memory and swap use, and for the
+utilization and video memory of up to two graphics processors.  At
+the bottom, graphs show the recent history of processor and memory
+use.
+
+@node CPU page
+@section The CPU page
+@cindex CPU page
+@cindex processors
+
+The top of the CPU page names the processor and gives the number of
+logical processors, their mean and highest current frequency, the
+highest frequency the hardware allows, and the package temperature.
+Below are the load averages, the share of time that tasks waited for
+a processor in the last ten seconds, the number of tasks running and
+blocked, and the rates of context switches, interrupts and new
+processes.
+
+A bar shows how the processors' time was used: by programs
+(@samp{user} and @samp{nice}), by the kernel (@samp{system} and
+@samp{IRQ}), waiting for input and output, and taken by a hypervisor
+(@samp{steal}).
+
+Then comes one cell per processor, with its use and, when there is
+room, a bar and its frequency.  On machines with many processors the
+cells get smaller to fit the screen.  At the bottom, graphs show the
+history of the total use and of the temperature, or of the frequency
+where the temperature is not known.
+
+The temperature comes from the first of these hardware monitoring
+drivers found: @code{coretemp}, @code{k10temp}, @code{zenpower},
+@code{cpu_thermal}, @code{soc_thermal} and @code{acpitz}.
+
+@node Memory page
+@section The Memory page
+@cindex Memory page
+@cindex swap
+@cindex zram
+
+The first bar divides memory between programs, the kernel, buffers,
+the page cache and free memory; the second shows how much swap is
+used.  The figure at the end of the first bar is the memory in use:
+the total less what is available, as the kernel estimates it.
+
+Below are the details: shared memory, the parts of the kernel's own
+use, the swap cache, the data stored in zram devices and the memory
+it takes compressed, dirty pages and those being written back, the
+memory committed to programs against the kernel's limit, and huge
+pages.  On a wide screen a third column gives the rates of page
+faults and of swapping, and the share of time that tasks were delayed
+(@samp{Waiting}) or all stopped (@samp{Stalled}) for lack of memory.
+
+Graphs show the history of memory and swap use, and a table lists the
+ten processes with the most memory.
+
+@node GPU page
+@section The GPU page
+@cindex GPU page
+@cindex graphics processors
+@cindex NVIDIA
+
+The GPU page shows graphics processors from AMD, Intel and NVIDIA,
+read from the kernel's drivers: @code{amdgpu} gives the most, while
+@code{i915} and @code{xe} give the frequency and, from the time the
+GPU spent idle, how busy it was, and @code{nouveau} gives what it
+can.
+
+@cindex NVML
+NVIDIA's own driver is not free software, and neither is NVML, the
+monitoring library that comes with it.  GPUs that use that driver are
+shown only if Dials was configured with @option{--enable-nvml}; it
+then loads NVML when it starts, if it is installed.  Names come from the PCI ID database, when it is
+installed.  The page says why when there is nothing to show.
+
+The list at the top has one line per GPU, with its temperature,
+utilization, video memory, power, fan speed and a status.  The status
+warns when a GPU reaches 85@tie{}@textdegree{}C or uses 95% of its
+video memory.  Choose a GPU with @key{UP} and @key{DOWN}.
+
+Below the list are the details of the chosen GPU: the driver version,
+the performance state, the processor and memory clocks, the fan
+speed and the use of the video encoder and decoder.  Then come blocks
+with the current temperature, utilization, video memory and power,
+each with the lowest, mean and highest value seen, graphs of their
+history, and the processes using the GPU with their share of its time
+and of its memory.  Processes are listed only for GPUs read through
+NVML.
+
+On a small screen the blocks are left out first, then the processes.
+
+@node Disks page
+@section The Disks page
+@cindex Disks page
+@cindex file systems
+
+The list at the top has one line per disk, with its model, size, read
+and write throughput, the share of time it was busy, the mean time an
+operation took, and its temperature when the drive reports one.
+Loop, RAM and zram devices are not listed, nor are disks attached
+after Dials started.  Choose a disk with @key{UP} and @key{DOWN}.
+
+Below the list are the details of the chosen disk and graphs of its
+reads, writes and busy time.  The throughput graphs scale to the
+highest rate seen, so that small transfers still show.
+
+The table at the bottom lists the file systems on local disks with
+their size, the space used and free, and a bar of their use.  A device
+mounted in several places, as Btrfs subvolumes often are, is listed
+once.  Network file systems are left out, because measuring one that
+does not answer would stop the program.
+
+@node Network page
+@section The Network page
+@cindex Network page
+@cindex interfaces
+
+The list at the top has one line per network interface: its state,
+link speed, the rates at which it receives and sends, and the bytes
+received and sent since it came up.  Interfaces backed by hardware
+come first, then virtual ones such as bridges and tunnels, and the
+loopback last.  Interfaces that appear or go away while Dials runs
+are added and removed.  Choose one with @key{UP} and @key{DOWN}.
+
+Below are the chosen interface's hardware address, MTU, packet rates,
+errors and drops, and its addresses, followed by graphs of what it
+receives and sends.  The last line counts TCP connections by state
+and UDP sockets.
+
+@node Processes page
+@section The Processes page
+@cindex Processes page
+@cindex signals, sending
+@cindex nice value
+
+The first line counts the tasks by state and their threads.  Below,
+one line per process gives its PID, user, state, nice value, threads,
+share of a processor, share of memory, memory used, processor time
+and command.  Kernel threads, which have no command line, are shown
+by name in brackets.
+
+@table @kbd
+@item @key{UP}
+@itemx @key{DOWN}
+@itemx @key{PgUp}
+@itemx @key{PgDn}
+Choose a process.  The choice follows the process as the list is
+sorted again.
+@item F5
+Sort by processor use, memory, PID, user, name or processor time, in
+turn.
+@item F6
+Show the processes as a tree, each under its parent, or as a list.
+@item /
+Show only the processes whose name or command contains some text,
+ignoring case.  An empty text shows all again.
+@item F7
+Change the chosen process's nice value.  Raising it is allowed for
+your own processes; lowering it needs root privileges.
+@item F8
+Send a signal to the chosen process: TERM to ask it to end, KILL to
+end it at once, HUP, INT, STOP to pause it or CONT to let it continue.
+Nothing is sent until you press @key{RET}.
+@end table
+
+On this page, F7 and F8 do these instead of their usual jobs; use
+@kbd{r} to clear the history.  With @option{--demo}, no signal is
+sent and no nice value changed.
+
+@node Sensors page
+@section The Sensors page
+@cindex Sensors page
+@cindex hardware monitoring
+
+The table lists every temperature, fan, voltage, current and power
+input of the hardware monitoring drivers, grouped by chip, with its
+reading now, the lowest and highest seen, and the limit the driver
+gives.  Chips that share a driver, such as one per memory module, are
+numbered.  Readings are colored by how near they are to their limit.
+Choose a sensor with @key{UP}, @key{DOWN}, @key{PgUp} and @key{PgDn}
+to see its history in the graph below.
+
+@node Power page
+@section The Power page
+@cindex Power page
+@cindex batteries
+@cindex RAPL
+
+The page lists batteries: the system's own, with its charge, state,
+time left, rate, health against its design capacity, charge cycles
+and voltage, and those of devices such as a wireless mouse, which
+often report only a level such as @samp{Normal}.  Mains and USB power
+supplies show whether they are connected.
+
+Processor power comes from RAPL, where the hardware has it; most
+systems let only root read it, and the page says so.  Power readings
+from hardware monitoring, such as those of a power supply, are listed
+too.  The graph shows the processor package's power, or else the
+first power reading, or else the battery's charge.
+
+@node Keys
+@chapter Keys
+@cindex keys
+
+@table @kbd
+@item F1
+@itemx h
+@itemx ?
+Show the list of keys.
+@item F2
+@itemx p
+@itemx @key{SPC}
+Pause or resume sampling.
+@item F3
+@itemx -
+Sample less often.
+@item F4
+@itemx +
+Sample more often.
+@item F7
+@itemx r
+Clear the history graphs.
+@item F9
+Open the menu bar.  Use the arrow keys to move, @key{RET} to choose and
+@key{ESC} to close it.
+@item F10
+@itemx q
+Quit.
+@item 1 @dots{} 9
+@itemx M-1 @dots{} M-9
+Go to a page.
+@item @key{UP}
+@itemx @key{DOWN}
+Choose a disk, interface, process, sensor or GPU on its page.
+@item F5 @dots{} F8
+@itemx /
+Commands of the Processes page.  @xref{Processes page}.
+@item C-@key{PgUp}
+@itemx C-@key{PgDn}
+Go to the previous or next page.
+@item t
+Switch to the next color theme.
+@item s
+Show two panels side by side, or one.
+@item @key{TAB}
+@itemx C-u
+Make the other panel active; swap the panels.
+@item l
+Start or stop logging.  @xref{Logging}.
+@end table
+
+@node Settings
+@chapter Settings
+@cindex settings
+@cindex configuration file
+@cindex @file{dials.conf}
+
+Choose @samp{Save setup} in the Options menu to keep the sampling
+interval, the color theme, the panels and their pages, and how the
+Processes page sorts its list, for the next time Dials starts.  They
+are written to @file{dials/dials.conf} under the directory named by
+the environment variable @env{XDG_CONFIG_HOME}, or under
+@file{~/.config} if it is not set.  Options given on the command line
+take precedence.
+
+The file holds lines of @samp{@var{name} = @var{value}}, which may be
+edited; lines starting with @samp{#} are ignored, and Dials names
+those it does not understand.  For example:
+
+@example
+interval = 2
+theme = classic
+left-page = overview
+right-page = gpu
+active-panel = left
+two-panels = yes
+process-sort = cpu
+process-tree = no
+@end example
+
+@node Logging
+@chapter Logging
+@cindex logging
+@cindex CSV
+@cindex JSON
+
+Press @kbd{l}, or choose @samp{Start logging} in the Options menu, to
+write each sample to a file; the menu bar shows @samp{REC} meanwhile.
+The file is the one given with @option{--log}, or else a new file
+named after the date and time, such as
+@file{dials-20261119-142500.csv}, in the working directory.  A file
+that exists is added to.
+
+A file whose name ends in @file{.json} or @file{.jsonl} gets one JSON
+object per line; any other gets comma-separated values with a heading
+line.  Each line has the time, processor use, memory and swap in MiB,
+the load average, the temperature, utilization, memory and power of
+each GPU, the bytes read and written per second on each disk, and the
+bytes received and sent per second on each hardware network
+interface.  Numbers always use @samp{.} as the decimal point.  Values
+that cannot be read are left empty, or are @code{null} in JSON.  The
+columns are fixed when logging starts.
+
+@node Sources
+@chapter Where the measurements come from
+@cindex sources of measurements
+@cindex @file{/proc}
+@cindex @file{/sys}
+
+Dials reads what the Linux kernel publishes; it does not need a
+daemon or a kernel module of its own.  These are the main sources:
+
+@table @asis
+@item The system
+@file{/proc/sys/kernel/hostname}, @file{/proc/sys/kernel/osrelease},
+@file{/etc/os-release}, @file{/proc/cpuinfo} and @file{/proc/uptime}.
+
+@item Processors
+@file{/proc/stat}, @file{/proc/loadavg}, @file{/proc/pressure/cpu},
+@file{/sys/devices/system/cpu/cpu*/cpufreq} and the hardware
+monitoring drivers in @file{/sys/class/hwmon}.
+
+@item Memory
+@file{/proc/meminfo}, @file{/proc/vmstat}, @file{/proc/pressure/memory},
+@file{/sys/block/zram*/mm_stat}, and @file{/proc/@var{pid}/statm} for
+the processes using the most.
+
+@item Graphics processors
+@file{/sys/class/drm/card*/device} and its hardware monitoring
+directory, or NVML from @file{libnvidia-ml.so.1} when Dials was
+configured with @option{--enable-nvml}, and the PCI ID database in @file{/usr/share/hwdata/pci.ids}
+or @file{/usr/share/misc/pci.ids}.
+
+@item Disks
+@file{/sys/block}, @file{/proc/diskstats} and @file{/proc/self/mounts},
+and @code{statvfs} for the space of each file system.
+
+@item Network
+@file{/proc/net/dev}, @file{/sys/class/net}, @file{/proc/net/tcp},
+@file{/proc/net/tcp6}, @file{/proc/net/udp} and @file{/proc/net/udp6},
+and @code{getifaddrs} for the addresses.
+
+@item Processes
+@file{/proc/@var{pid}/stat}, @file{/proc/@var{pid}/comm} and
+@file{/proc/@var{pid}/cmdline}; the owner of @file{/proc/@var{pid}}
+is the process's user.
+
+@item Sensors
+@file{/sys/class/hwmon}.
+
+@item Power
+@file{/sys/class/power_supply} and @file{/sys/class/powercap}.
+@end table
+
+Most of these files are kept open and read again in place at each
+sample, which is much cheaper than opening them again.  The
+@option{--sysroot} option reads the same files under another directory
+(@pxref{Invoking dials}).
+
+@node Reporting bugs
+@chapter Reporting bugs
+@cindex bugs, reporting
+
+Please include the output of @samp{dials --version} and
+@samp{dials --once} in a bug report, together with the name of the
+terminal you use.
+
+@node GNU Free Documentation License
+@appendix GNU Free Documentation License
+
+@include fdl.texi
+
+@node Index
+@unnumbered Index
+
+@printindex cp
+
+@bye
